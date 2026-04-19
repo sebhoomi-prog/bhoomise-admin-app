@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "message": "Low stock items for your store.",
+  "data": {
+    "store_id": 5,
+    "alerts": [
+      {
+        "inventory_id": 1002,
+        "product_id": 1,
+        "variant_id": 102,
+        "stock": 3,
+        "threshold": 5,
+        "message": "Variant 500g is below minimum stock."
+      }
+    ]
+  }
+}

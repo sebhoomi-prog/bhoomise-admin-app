@@ -1,0 +1,196 @@
+rules_version = '2';
+// Deploy: `firebase deploy --only firestore:rules` or paste in Console → Firestore → Rules.
+//
+// Admin = custom claim `admin: true` OR document `admin_phones/{phone}` exists where `phone`
+// equals `request.auth.token.phone_number` (E.164). Bootstrap first admin doc in Console.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Primary ops number (E.164). Also maintain `admin_phones/{phone}` docs or `admin` claim as needed.
+    function hardcodedPrimaryAdminPhone() {
+      return signedIn()
+        && request.auth.token.phone_number is string
+        && request.auth.token.phone_number == '+917834822293';
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (
+          request.auth.token.admin == true
+          || hardcodedPrimaryAdminPhone()
+          || (
+            request.auth.token.phone_number is string
+            && exists(
+              /databases/$(database)/documents/admin_phones/$(request.auth.token.phone_number)
+            )
+          )
+        );
+    }
+
+    function userData() {
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
+    }
+
+    // Option B: role on user profile (no claims yet)
+    function role() {
+      return signedIn() && userData() != null ? userData().role : null;
+    }
+
+    // Store / vendor console: seller role on `users/{uid}` (set by app when entering vendor flow).
+    function isPartner() {
+      return signedIn()
+        && userData() != null
+        && (
+          userData().role == 'partner'
+          || userData().role == 'store'
+          || userData().role == 'vendor'
+        );
+    }
+
+    // True when the user profile is bound to the same store as the listing being created
+    // and has a seller role — OR has no `role` yet but a matching `storeId` (first write race).
+    function listingSubmissionCreateAllowed() {
+      let u = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return signedIn()
+        && request.resource.data.submittedByUid == request.auth.uid
+        && request.resource.data.approvalStatus == 'pending'
+        && request.resource.data.storeId is string
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && 'storeId' in u
+        && u.storeId == request.resource.data.storeId
+        && (
+          u.role == 'partner'
+          || u.role == 'store'
+          || u.role == 'vendor'
+          || !('role' in u)
+        );
+    }
+
+    function userStoreId() {
+      return userData() != null && 'storeId' in userData() ? userData().storeId : null;
+    }
+
+    // --- Admin allowlist: doc ID = full E.164 from Phone Auth (must match token phone_number)
+    match /admin_phones/{phoneE164} {
+      allow read: if signedIn() && request.auth.token.phone_number == phoneE164;
+      allow write: if false;
+    }
+
+    // --- Users: own profile; admins may read any profile (directory / support).
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update, delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // --- App metadata (seed marker, etc.)
+    match /app/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Catalog: public read; admin write
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Store profile document (partners may update own storefront metadata / photo URL)
+    match /stores/{storeId} {
+      allow read: if true;
+      allow write: if isAdmin()
+        || (signedIn() && isPartner() && userStoreId() == storeId);
+    }
+
+    // --- In-app notification inbox (FCM push requires Cloud Functions; app shows these live)
+    match /notifications/{notifId} {
+      allow read: if signedIn() && (
+        resource.data.recipientUid == request.auth.uid
+        || (isAdmin() && resource.data.recipientUid == 'ADMIN_BROADCAST')
+      );
+      allow create: if signedIn() && (
+        (
+          isAdmin()
+          && request.resource.data.recipientUid is string
+          && request.resource.data.recipientUid != 'ADMIN_BROADCAST'
+        )
+        || (
+          isPartner()
+          && request.resource.data.recipientUid == 'ADMIN_BROADCAST'
+          && request.resource.data.kind == 'vendor_listing_submitted'
+        )
+      );
+      allow update, delete: if false;
+    }
+
+    // --- Store inventory: partner for this store or admin
+    match /stores/{storeId}/inventory/{docId} {
+      allow read: if signedIn() && (isAdmin() || userStoreId() == storeId);
+      allow write: if signedIn() && (isAdmin() || (isPartner() && userStoreId() == storeId));
+    }
+
+    // --- Orders
+    match /orders/{orderId} {
+      allow read: if signedIn() && (
+        isAdmin() ||
+        ('customerId' in resource.data && resource.data.customerId == request.auth.uid) ||
+        ('storeId' in resource.data && userStoreId() == resource.data.storeId)
+      );
+      allow create: if signedIn() && (
+        isAdmin() ||
+        ('customerId' in request.resource.data
+          && request.resource.data.customerId == request.auth.uid)
+      );
+      allow update: if signedIn() && (
+        isAdmin() ||
+        (
+          'storeId' in resource.data
+          && userStoreId() == resource.data.storeId
+        )
+      );
+    }
+
+    // --- Coupons (apply flow may need read — tighten if coupons must stay secret)
+    match /coupons/{code} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // --- Vendor mushroom uploads → admin approval → published to products + inventory
+    match /listing_submissions/{submissionId} {
+      allow create: if listingSubmissionCreateAllowed();
+
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.submittedByUid == request.auth.uid)
+        || (signedIn()
+          && isPartner()
+          && resource.data.storeId == userStoreId());
+
+      // Vendor may revise their own submission while still pending (same store / uid).
+      allow update: if isAdmin()
+        || (
+          signedIn()
+          && isPartner()
+          && resource.data.submittedByUid == request.auth.uid
+          && resource.data.storeId == userStoreId()
+          && resource.data.approvalStatus == 'pending'
+          && request.resource.data.approvalStatus == 'pending'
+          && request.resource.data.submittedByUid == resource.data.submittedByUid
+          && request.resource.data.storeId == resource.data.storeId
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

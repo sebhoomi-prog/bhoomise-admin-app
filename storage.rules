@@ -1,0 +1,68 @@
+rules_version = '2';
+// Deploy: `firebase deploy --only storage` or Console → Storage → Rules.
+//
+// **Dev-only wide open rules:** `allow read, write: if true` — anyone can read/delete/overwrite
+// your entire bucket. Do not ship that to production.
+//
+// This file: public reads for CDN-style URLs in the customer app (guests); writes restricted
+// to the same admins as [firestore.rules] (`admin` claim or `admin_phones/{E.164}`).
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Mirror Firestore admin check (Phone Auth must expose `phone_number` on the token).
+    function hardcodedPrimaryAdminPhone() {
+      return signedIn()
+        && request.auth.token.phone_number is string
+        && request.auth.token.phone_number == '+917834822293';
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (
+          request.auth.token.admin == true
+          || hardcodedPrimaryAdminPhone()
+          || (
+            request.auth.token.phone_number is string
+            && firestore.exists(
+              /databases/(default)/documents/admin_phones/$(request.auth.token.phone_number)
+            )
+          )
+        );
+    }
+
+    // Optional: scope uploads so admins cannot overwrite arbitrary paths.
+    match /customer_home/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && request.resource.size < 6 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Product / catalog images — admin (full tree) + vendor uploads under `vendor/{uid}/`.
+    match /catalog/vendor/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /catalog/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Deny everything else by default (tighten by adding more `match` blocks as needed).
+    match /{allPaths=**} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "message": "Bhoomise design strategy — client reference",
+  "data": {
+    "brand": {
+      "name": "Bhoomise",
+      "positioning": "Smart Agri-Commerce & Inventory Platform",
+      "visual_direction": "Agri-Tech aesthetic: structured layouts, data-driven visuals, deep greens",
+      "customer_surface": "rounded, high-gloss friendly (customer B2C)",
+      "operations_surface": "efficient utility density (store & admin)"
+    },
+    "typography": {
+      "font_family": "Plus Jakarta Sans",
+      "source": "google_fonts",
+      "usage": ["UI", "headings", "body"]
+    },
+    "color": {
+      "primary_hex": "#166534",
+      "secondary_hex": "#006B2C",
+      "surface_hex": "#F8F9FF",
+      "alert_low_hex": "#B45309",
+      "alert_out_hex": "#B91C1C"
+    },
+    "screens": {
+      "customer": ["login", "catalog", "pdp_variants", "cart_line_items", "checkout"],
+      "store": ["inventory_dashboard", "quick_sale_sync"],
+      "admin": ["global_supply", "supply_orders"]
+    }
+  }
+}

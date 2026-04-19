@@ -1,0 +1,60 @@
+{
+  "success": true,
+  "message": "Product retrieved.",
+  "data": {
+    "id": 1,
+    "name": "Fresh Oyster Mushrooms",
+    "description": "Grown locally, ideal for stir-fry and soups.",
+    "image_url": "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?fm=jpg&fit=crop&w=1200&q=80",
+    "hero_image_url": "https://images.unsplash.com/photo-1500382017468-9049fed747ef?fm=jpg&fit=crop&w=1200&q=80",
+    "created_at": "2026-03-15T08:00:00.000000Z",
+    "updated_at": "2026-04-10T09:00:00.000000Z",
+    "variants": [
+      {
+        "id": 101,
+        "product_id": 1,
+        "name": "200 g",
+        "total_grams": 200,
+        "price": "90.00",
+        "stock": 48,
+        "low_stock_threshold": 10
+      },
+      {
+        "id": 102,
+        "product_id": 1,
+        "name": "500 g",
+        "total_grams": 500,
+        "price": "200.00",
+        "stock": 28,
+        "low_stock_threshold": 8
+      },
+      {
+        "id": 103,
+        "product_id": 1,
+        "name": "1 kg",
+        "total_grams": 1000,
+        "price": "380.00",
+        "stock": 22,
+        "low_stock_threshold": 5
+      },
+      {
+        "id": 104,
+        "product_id": 1,
+        "name": "2 kg",
+        "total_grams": 2000,
+        "price": "720.00",
+        "stock": 12,
+        "low_stock_threshold": 3
+      },
+      {
+        "id": 105,
+        "product_id": 1,
+        "name": "10 kg",
+        "total_grams": 10000,
+        "price": "3200.00",
+        "stock": 4,
+        "low_stock_threshold": 2
+      }
+    ]
+  }
+}

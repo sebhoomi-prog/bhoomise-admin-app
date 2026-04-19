@@ -1,0 +1,65 @@
+{
+  "success": true,
+  "message": "Cultivator Console — vendor home",
+  "data": {
+    "eyebrow": "CULTIVATOR CONSOLE",
+    "headline_line1": "Spore Growth",
+    "headline_accent": "Overview",
+    "brand_title": "Bhoomise",
+    "stats": {
+      "total_revenue": { "label": "TOTAL REVENUE", "value": "$4,200", "trend_pct": "+18.2%", "trend_hint": "from last month" },
+      "active_orders": { "label": "ACTIVE ORDERS", "value": "12", "avatar_extra": "+9" },
+      "total_products": { "label": "TOTAL PRODUCTS", "value": "45", "capacity_pct": 75 }
+    },
+    "curator_tip": {
+      "eyebrow": "CURATOR TIP",
+      "body": "Lion's Mane is trending in your area.",
+      "cta": "Boost Listing"
+    },
+    "performance": {
+      "title": "Today's Performance",
+      "live": true,
+      "period_label": "Last 24h",
+      "axis_labels": ["00:00", "10:00", "14:00", "20:00", "Now"],
+      "bar_norms": [0.35, 0.55, 0.42, 0.95, 0.48],
+      "tooltip_index": 3,
+      "tooltip_lines": ["2:00 PM", "74.2"]
+    },
+    "recent_log": {
+      "title": "Recent Log",
+      "entries": [
+        { "title": "New Order #4829", "subtitle": "Shiitake - 2kg", "time": "4m ago", "dot": "primary" },
+        { "title": "Inventory Low #1017", "subtitle": "Oyster Mushrooms", "time": "2h ago", "dot": "accent" },
+        { "title": "Payment Processed", "subtitle": "$1,240 weekly settlement", "time": "1d ago", "dot": "muted" }
+      ],
+      "footer_link": "Full Audit Log"
+    },
+    "active_curations": {
+      "title": "Active Curations",
+      "manage_link": "Manage Catalog",
+      "featured": {
+        "badge": "BESTSELLER",
+        "price": "$24.00 / lb.",
+        "name": "Organic Pink Oyster",
+        "description": "Delicate, vibrant clusters harvested at peak maturity. Preferred by local culinary curators.",
+        "status_label": "LISTING HEALTH",
+        "image_url": "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?fm=jpg&fit=crop&w=1200&q=80"
+      },
+      "rows": [
+        {
+          "name": "Shiitake Powder",
+          "subtitle": "12 Units Remaining",
+          "image_url": "https://images.unsplash.com/photo-1551024506-0bccd828d307?fm=jpg&fit=crop&w=400&q=80",
+          "stock_state": "ok"
+        },
+        {
+          "name": "Lion's Mane Kit",
+          "subtitle": "Out of Stock",
+          "image_url": "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?fm=jpg&fit=crop&w=400&q=80",
+          "stock_state": "out"
+        }
+      ],
+      "create_cta": "Create New Listing"
+    }
+  }
+}

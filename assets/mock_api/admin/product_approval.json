@@ -1,0 +1,72 @@
+{
+  "success": true,
+  "message": "Admin product approval",
+  "data": {
+    "brand_title": "Bhoomise",
+    "avatar_url": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?fm=jpg&fit=crop&w=128&q=80",
+    "eyebrow": "CURATION PIPELINE",
+    "title": "Product Approval",
+    "description": "Reviewing the latest mycological additions from our partner foragers and urban farmers. Maintain the curated standard of the marketplace.",
+    "filter": {
+      "archive_label": "Archive",
+      "pending_label": "Pending",
+      "pending_count": 12
+    },
+    "featured": {
+      "image_url": "https://images.unsplash.com/photo-1566641568429-6e4e82514a52?fm=jpg&fit=crop&w=900&q=80",
+      "badge": "RARE VARIETY",
+      "name": "Blue Oyster",
+      "price": "$24.00",
+      "per_unit": "per lb",
+      "vendor": "Urban Mycelium",
+      "vendor_verified": true,
+      "description": "Grown in a climate-controlled urban laboratory. These specimens feature exceptionally wide caps and a deep cerulean hue. Harvested less than 12 hours ago.",
+      "tags": ["LOCAL", "ORGANIC", "LAB-TESTED"],
+      "approve_label": "Approve Item",
+      "reject_label": "Reject"
+    },
+    "reviewer_note": {
+      "title": "Reviewer Note",
+      "body": "Check for \"Spore Density\" certifications on all Pleurotus varieties this week. Urban Mycelium has passed the last 4 audits."
+    },
+    "pipeline": {
+      "title": "Pipeline Status",
+      "rows": [
+        {
+          "label": "Awaiting Technical Review",
+          "count": "04",
+          "progress": 0.67
+        },
+        {
+          "label": "Final Compliance Check",
+          "count": "08",
+          "progress": 0.8
+        }
+      ]
+    },
+    "secondary_title": "Secondary Queue",
+    "secondary_items": [
+      {
+        "thumb_url": "https://images.unsplash.com/photo-1506806732259-39c2d29ccf3c?fm=jpg&fit=crop&w=200&q=80",
+        "name": "Lion's Mane",
+        "vendor": "Forest Floor Co.",
+        "status_badge": "WILD FORAGED",
+        "status_tone": "success"
+      },
+      {
+        "thumb_url": "https://images.unsplash.com/photo-1615485925607-94a58289ad2c?fm=jpg&fit=crop&w=200&q=80",
+        "name": "Golden Enoki",
+        "vendor": "Golden Roots Growers",
+        "status_badge": "GREENHOUSE",
+        "status_tone": "warning"
+      },
+      {
+        "thumb_url": "https://images.unsplash.com/photo-1585651413233-fb6d63f4e2e0?fm=jpg&fit=crop&w=200&q=80",
+        "name": "King Trumpet",
+        "vendor": "Eco-Harvest Collective",
+        "status_badge": "ECO-PACKAGED",
+        "status_tone": "brand"
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "message": "Item added to cart.",
+  "data": {
+    "cart": {
+      "id": 900,
+      "user_id": 1
+    },
+    "item": {
+      "id": 9002,
+      "cart_id": 900,
+      "product_id": 1,
+      "variant_id": 102,
+      "quantity": 1
+    }
+  }
+}

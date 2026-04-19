@@ -1,0 +1,39 @@
+{
+  "description": "Dummy PHP/Laravel-style API payloads for Bhoomise. Swap to live base URL and remove or stop loading these assets.",
+  "base_url_placeholder": "https://your-domain.com/api",
+  "response_envelope": {
+    "success_shape": "success (bool), message (string), data (object or array, optional)",
+    "error_shape": "success false, message string"
+  },
+  "routes": {
+    "POST /api/auth/send-otp": "auth/send_otp_success.json",
+    "POST /api/auth/verify-otp": "auth/verify_otp_success.json",
+    "GET /api/user/me": "user/me.json",
+    "PUT /api/user/profile": "user/update_profile_success.json",
+    "GET /api/products": "product/products_index.json",
+    "GET /api/products/{id}": "product/product_show.json",
+    "GET /api/inventory": "inventory/inventory_index.json",
+    "GET /api/inventory/low-stock": "inventory/low_stock_alert.json",
+    "GET /api/cart": "cart/cart_show.json",
+    "POST /api/cart/items": "cart/cart_add_item_success.json",
+    "GET /api/orders": "order/orders_index.json",
+    "POST /api/orders": "order/order_create_success.json",
+    "GET /api/orders/{id}": "order/order_show.json",
+    "GET /api/stores": "store/stores_index.json",
+    "POST /api/stores/register": "store/store_register_success.json",
+    "POST /api/coupons/apply": "coupon/coupon_apply_success.json",
+    "GET /api/referrals": "referral/referral_stats.json",
+    "GET /api/notifications": "notification/notifications_index.json",
+    "GET /api/ui/login-screen": "ui/login_screen.json",
+    "GET /api/ui/theme": "ui/bhoomise_theme.json",
+    "GET /api/inventory/store-dashboard": "inventory/store_dashboard.json",
+    "GET /api/store/quick-sale": "store/quick_sale.json",
+    "GET /api/admin/global-supply": "admin/global_supply_dashboard.json",
+    "GET /api/admin/supply-orders": "admin/supply_orders.json"
+  },
+  "error_response_samples": {
+    "auth/send_otp_rate_limited": "auth/send_otp_error.json",
+    "auth/verify_otp_invalid": "auth/verify_otp_error.json",
+    "coupon/apply_invalid": "coupon/coupon_apply_error.json"
+  }
+}

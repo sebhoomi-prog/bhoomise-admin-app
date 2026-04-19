@@ -1,0 +1,96 @@
+{
+  "success": true,
+  "message": "Products retrieved.",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "name": "Fresh Oyster Mushrooms",
+        "description": "Grown locally, ideal for stir-fry and soups.",
+        "image_url": "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?fm=jpg&fit=crop&w=1200&q=80",
+        "created_at": "2026-03-15T08:00:00.000000Z",
+        "updated_at": "2026-04-10T09:00:00.000000Z",
+        "variants": [
+          {
+            "id": 101,
+            "product_id": 1,
+            "name": "200 g",
+            "total_grams": 200,
+            "price": "90.00",
+            "stock": 48,
+            "low_stock_threshold": 10
+          },
+          {
+            "id": 102,
+            "product_id": 1,
+            "name": "500 g",
+            "total_grams": 500,
+            "price": "200.00",
+            "stock": 28,
+            "low_stock_threshold": 8
+          },
+          {
+            "id": 103,
+            "product_id": 1,
+            "name": "1 kg",
+            "total_grams": 1000,
+            "price": "380.00",
+            "stock": 22,
+            "low_stock_threshold": 5
+          },
+          {
+            "id": 104,
+            "product_id": 1,
+            "name": "2 kg",
+            "total_grams": 2000,
+            "price": "720.00",
+            "stock": 12,
+            "low_stock_threshold": 3
+          },
+          {
+            "id": 105,
+            "product_id": 1,
+            "name": "10 kg",
+            "total_grams": 10000,
+            "price": "3200.00",
+            "stock": 4,
+            "low_stock_threshold": 2
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Button Mushrooms",
+        "description": "Versatile white mushrooms for everyday cooking.",
+        "image_url": "https://images.unsplash.com/photo-1567333506008-8be40c293909?fm=jpg&fit=crop&w=1200&q=80",
+        "created_at": "2026-03-16T08:00:00.000000Z",
+        "updated_at": "2026-04-10T09:00:00.000000Z",
+        "variants": [
+          {
+            "id": 201,
+            "product_id": 2,
+            "name": "250 g",
+            "total_grams": 250,
+            "price": "90.00",
+            "stock": 0,
+            "low_stock_threshold": 5
+          },
+          {
+            "id": 202,
+            "product_id": 2,
+            "name": "500 g",
+            "total_grams": 500,
+            "price": "170.00",
+            "stock": 34,
+            "low_stock_threshold": 8
+          }
+        ]
+      }
+    ],
+    "meta": {
+      "current_page": 1,
+      "per_page": 20,
+      "total": 2
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "message": "Quick sale screen copy",
+  "data": {
+    "title": "Log offline sale",
+    "subtitle": "Record a walk-in or phone sale; we sync to central inventory in real time.",
+    "sync_message": "Queued for sync — inventory will update shortly.",
+    "fields": [
+      { "key": "variant_id", "label": "Variant", "type": "select" },
+      { "key": "quantity", "label": "Quantity", "type": "number" },
+      { "key": "note", "label": "Note (optional)", "type": "text" }
+    ]
+  }
+}

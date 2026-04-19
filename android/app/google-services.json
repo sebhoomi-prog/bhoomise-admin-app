@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "203873375607",
+    "firebase_url": "https://bhoomise-default-rtdb.firebaseio.com",
+    "project_id": "bhoomise",
+    "storage_bucket": "bhoomise.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:203873375607:android:d44c2a878928eb47c27d72",
+        "android_client_info": {
+          "package_name": "com.bhoomise"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVDv3FHRCQwihwwG5PaOQEzHvYEOjqnGQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

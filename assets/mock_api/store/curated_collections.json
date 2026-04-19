@@ -1,0 +1,75 @@
+{
+  "success": true,
+  "message": "Curated collections — vendor inventory",
+  "data": {
+    "brand_title": "Bhoomise",
+    "eyebrow": "INVENTORY MANAGEMENT",
+    "title_line1": "Curated",
+    "title_line2": "Collections",
+    "search_hint": "Search cultivars...",
+    "new_listing_route": "vendorAddCultivation",
+    "filters": [
+      { "id": "all", "label": "All Spores" },
+      { "id": "lions_mane", "label": "Lion's Mane" },
+      { "id": "shiitake", "label": "Shiitake" },
+      { "id": "oyster", "label": "Oyster" },
+      { "id": "reishi", "label": "Reishi" },
+      { "id": "chaga", "label": "Chaga" }
+    ],
+    "items": [
+      {
+        "id": "lm-1",
+        "name": "Lion's Mane",
+        "price": "$24.00",
+        "batch": "LM-042",
+        "stock_pct": 82,
+        "badge": "LIVE",
+        "listing_status": "live",
+        "stock_tone": "green",
+        "action_label": "Edit",
+        "image_url": "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?fm=jpg&fit=crop&w=800&q=80",
+        "filter_tags": ["lions_mane"]
+      },
+      {
+        "id": "bo-1",
+        "name": "Blue Oyster",
+        "price": "$18.50",
+        "batch": "BO-119",
+        "stock_pct": 45,
+        "badge": "PENDING",
+        "listing_status": "pending",
+        "stock_tone": "grey",
+        "action_label": "Review",
+        "image_url": "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?fm=jpg&fit=crop&w=800&q=80",
+        "filter_tags": ["oyster"]
+      },
+      {
+        "id": "sh-1",
+        "name": "Oak Shiitake",
+        "price": "$21.00",
+        "batch": "SH-202",
+        "stock_pct": 12,
+        "badge": "LIVE",
+        "listing_status": "live",
+        "stock_tone": "red",
+        "action_label": "Restock",
+        "image_url": "https://images.unsplash.com/photo-1551024506-0bccd828d307?fm=jpg&fit=crop&w=800&q=80",
+        "filter_tags": ["shiitake"]
+      },
+      {
+        "id": "gc-1",
+        "name": "Golden Chanterelle",
+        "price": "$32.00",
+        "batch": "GC-001",
+        "stock_pct": 0,
+        "badge": "REJECTED",
+        "listing_status": "rejected",
+        "stock_tone": "empty",
+        "action_label": "View Issue",
+        "image_url": "https://images.unsplash.com/photo-1599599810769-bcde5a160d32?fm=jpg&fit=crop&w=800&q=80",
+        "filter_tags": [],
+        "image_grayscale": true
+      }
+    ]
+  }
+}

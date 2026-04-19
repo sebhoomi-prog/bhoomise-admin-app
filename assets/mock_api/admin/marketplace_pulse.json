@@ -1,0 +1,89 @@
+{
+  "success": true,
+  "message": "Admin Marketplace Pulse",
+  "data": {
+    "brand_title": "Bhoomise",
+    "eyebrow": "ADMINISTRATIVE CONSOLE",
+    "title": "Marketplace Pulse",
+    "subtitle": "Current harvest cycle: Autumn 2024",
+    "total_revenue": {
+      "label": "TOTAL REVENUE",
+      "value": "$24,500",
+      "trend": "+12.5% from last month"
+    },
+    "total_users": {
+      "label": "TOTAL USERS",
+      "value": "1,240",
+      "goal": 1500,
+      "goal_caption": "Goal: 1,500 users"
+    },
+    "total_vendors": {
+      "label": "TOTAL VENDORS",
+      "value": "85",
+      "extra_count": "+12",
+      "avatar_urls": [
+        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?fm=jpg&fit=crop&w=128&q=80",
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?fm=jpg&fit=crop&w=128&q=80",
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?fm=jpg&fit=crop&w=128&q=80"
+      ]
+    },
+    "active_orders": {
+      "title": "Active Orders Status",
+      "badge": "150 PROCESSING",
+      "rows": [
+        {
+          "key": "transit",
+          "title": "In Transit",
+          "subtitle": "82 shipments on the way.",
+          "pct": 62,
+          "icon_bg": "mint",
+          "icon": "truck"
+        },
+        {
+          "key": "prep",
+          "title": "Preparing",
+          "subtitle": "68 orders at vendor facilities.",
+          "pct": 38,
+          "icon_bg": "amber",
+          "icon": "package"
+        }
+      ]
+    },
+    "curator_choice": {
+      "image_url": "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?fm=jpg&fit=crop&w=1200&q=80",
+      "eyebrow": "CURATOR'S CHOICE",
+      "headline": "Review 24 New Submissions",
+      "cta": "Launch Reviewer"
+    },
+    "activity": {
+      "title": "Recent Activity",
+      "footer": "View all activity",
+      "items": [
+        {
+          "title": "New Vendor Signup",
+          "body": "EarthRoots Fungi Co. registered for a Pro account.",
+          "time": "2 MINUTES AGO",
+          "dot": "primary"
+        },
+        {
+          "title": "Product Approval Required",
+          "body": "12 items from Spore Palace pending review.",
+          "time": "1 HOUR AGO",
+          "dot": "accent",
+          "actions": [{ "label": "Review", "style": "primary" }, { "label": "Snooze", "style": "muted" }]
+        },
+        {
+          "title": "System Update",
+          "body": "Shipping API integration successfully refreshed.",
+          "time": "4 HOURS AGO",
+          "dot": "muted"
+        }
+      ]
+    },
+    "quality": {
+      "title": "Quality Score",
+      "value": "98.4%",
+      "body": "Global marketplace health remains excellent. Spore density and vendor compliance are at record highs."
+    }
+  }
+}

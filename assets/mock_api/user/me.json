@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "message": "User profile retrieved.",
+  "data": {
+    "id": 1,
+    "phone": "9876543210",
+    "role": "customer",
+    "is_verified": true,
+    "profile": {
+      "display_name": "Aditya",
+      "email": "user@example.com",
+      "phone_number": "+919876543210",
+      "profile_completed": true
+    },
+    "created_at": "2026-04-01T10:00:00.000000Z",
+    "updated_at": "2026-04-14T12:30:00.000000Z"
+  }
+}

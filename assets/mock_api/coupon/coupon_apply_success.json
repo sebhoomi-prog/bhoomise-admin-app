@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "message": "Coupon applied successfully.",
+  "data": {
+    "code": "FIRST10",
+    "discount_type": "percent",
+    "discount_value": "10",
+    "discount_minor": 2400,
+    "cart_summary": {
+      "currency": "INR",
+      "subtotal_minor": 24000,
+      "discount_minor": 2400,
+      "total_minor": 21600
+    }
+  }
+}

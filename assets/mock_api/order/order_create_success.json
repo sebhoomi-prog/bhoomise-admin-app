@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "message": "Order placed successfully.",
+  "data": {
+    "order": {
+      "id": 5003,
+      "user_id": 1,
+      "assigned_store_id": 5,
+      "status": "confirmed",
+      "placed_at": "2026-04-14T13:45:00.000000Z",
+      "updated_at": "2026-04-14T13:45:00.000000Z"
+    },
+    "assignment": {
+      "strategy": "nearest_store_with_stock",
+      "store_id": 5,
+      "store_name": "Bhoomise Hub — Indiranagar"
+    },
+    "lines": [
+      {
+        "product_id": 1,
+        "variant_id": 101,
+        "quantity": 2,
+        "unit_price_minor": 12000,
+        "line_total_minor": 24000
+      }
+    ],
+    "summary": {
+      "currency": "INR",
+      "subtotal_minor": 24000,
+      "discount_minor": 0,
+      "total_minor": 24000
+    }
+  }
+}

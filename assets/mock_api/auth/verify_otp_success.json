@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "message": "Phone verified successfully.",
+  "data": {
+    "token": "1|dummySanctumTokenReplaceWithLiveBearerToken",
+    "token_type": "Bearer",
+    "user": {
+      "id": 1,
+      "phone": "9876543210",
+      "role": "customer",
+      "is_verified": true,
+      "created_at": "2026-04-01T10:00:00.000000Z",
+      "updated_at": "2026-04-14T12:30:00.000000Z"
+    }
+  }
+}

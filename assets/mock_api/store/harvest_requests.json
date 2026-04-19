@@ -1,0 +1,62 @@
+{
+  "success": true,
+  "message": "Incoming harvest requests",
+  "data": {
+    "brand_title": "Bhoomise",
+    "eyebrow": "FUNGAL MARKETPLACE",
+    "title_parts": {
+      "before": "Incoming ",
+      "accent": "Harvest",
+      "after": " Requests"
+    },
+    "description": "Curate your daily distributions. Review and validate fresh substrate orders from your organic network.",
+    "queue_size": 12,
+    "priority_count": 4,
+    "filter_title": "Fungal Filters",
+    "filters": [
+      { "id": "newest", "label": "Newest", "active": true },
+      { "id": "high_value", "label": "High Value", "active": false },
+      { "id": "shiitake", "label": "Shiitake", "active": false },
+      { "id": "cordyceps", "label": "Cordyceps", "active": false }
+    ],
+    "inventory_alert": {
+      "eyebrow": "INVENTORY ALERT",
+      "body": "Stock depletion detected for King Trumpet.",
+      "cta": "Update Catalog"
+    },
+    "featured": {
+      "image_url": "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?fm=jpg&fit=crop&w=1200&q=80",
+      "priority_badge": "PRIORITY FRESH",
+      "order_id": "OR-5821",
+      "customer": "Eleanor Thorne",
+      "price": "$142.00",
+      "lines": [
+        "2kg Blue Oyster Cluster",
+        "500g Lion's Mane Extract"
+      ]
+    },
+    "orders": [
+      {
+        "id": "OR-4410",
+        "customer": "Julian Vane",
+        "item": "1.5kg Dried Shiitake",
+        "price": "$58.50",
+        "badge": { "kind": "new", "label": "+ New" }
+      },
+      {
+        "id": "OR-4409",
+        "customer": "Sarah Jenkins",
+        "item": "3kg Substrate Mix",
+        "price": "$44.00",
+        "badge": { "kind": "new", "label": "+ New" }
+      },
+      {
+        "id": "OR-4408",
+        "customer": "Marcus Bloom",
+        "item": "0.5kg Rare Cordyceps",
+        "price": "$210.00",
+        "badge": { "kind": "time", "label": "2m ago" }
+      }
+    ]
+  }
+}

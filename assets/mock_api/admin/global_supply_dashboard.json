@@ -1,0 +1,81 @@
+{
+  "success": true,
+  "message": "Admin Supply Hub — aligned with Figma frame Admin Supply Hub",
+  "data": {
+    "surface_hex": "#F5FBF5",
+    "eyebrow": "GLOBAL ADMIN COMMAND",
+    "title_line1": "Supply Chain",
+    "title_line2": "Intelligence Hub",
+    "network_health_label": "NETWORK HEALTH",
+    "network_health_value": "Optimized",
+    "catalog_badge": "EXCLUSIVE ADMIN POWER",
+    "catalog_title_line1": "Centralized",
+    "catalog_title_line2": "Product Catalog",
+    "catalog_body": "As the Primary Administrator, you hold the exclusive authority to create and define products within the Bhoomise ecosystem. System-wide inventory integrity starts with your catalog management.",
+    "primary_cta": "Create New Product",
+    "secondary_cta": "Manage Catalog",
+    "stats": [
+      { "label": "TOTAL SKUS", "value": "1,284" },
+      { "label": "DRAFTS", "value": "12" },
+      { "label": "LAST ENTRY", "value": "Organic Soy Fert." },
+      { "label": "SYSTEM HEALTH", "value": "Sync Active", "highlight": true }
+    ],
+    "kpis": [
+      {
+        "title": "Total Active Stores",
+        "value": "142",
+        "subtitle": "↑ 12% from last quarter",
+        "image_url": "https://images.unsplash.com/photo-1441986300917-64674bd600d8?fm=jpg&fit=crop&w=400&q=60"
+      },
+      {
+        "title": "Pending B2B Orders",
+        "value": "28",
+        "subtitle": "Next fulfillment: 4h",
+        "image_url": "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?fm=jpg&fit=crop&w=400&q=60"
+      },
+      {
+        "title": "Global Stock Level",
+        "value": "84%",
+        "subtitle": "Network weighted",
+        "progress": 0.84
+      }
+    ],
+    "retail_header": "Retail Partners",
+    "retail_subtitle": "Real-time inventory & fulfillment status",
+    "partners": [
+      {
+        "name": "Main St. Branch",
+        "detail": "Refill needed by Tue.",
+        "badge": "LOW STOCK",
+        "status": "low"
+      },
+      {
+        "name": "Garden District Hub",
+        "detail": "Next delivery 24 Jan.",
+        "badge": "HEALTHY",
+        "status": "healthy"
+      },
+      {
+        "name": "Riverside Depot",
+        "detail": "Delayed shipment.",
+        "badge": "CRITICAL",
+        "status": "critical"
+      }
+    ],
+    "stores": [
+      {
+        "id": 5,
+        "name": "Bhoomise Hub — Indiranagar",
+        "fill_rate_percent": 94,
+        "alerts": 2
+      },
+      {
+        "id": 6,
+        "name": "Bhoomise Hub — Whitefield",
+        "fill_rate_percent": 88,
+        "alerts": 4
+      }
+    ],
+    "map_preview_url": "https://images.unsplash.com/photo-1524661135-423995f22d0b?fm=jpg&fit=crop&w=1200&q=60"
+  }
+}

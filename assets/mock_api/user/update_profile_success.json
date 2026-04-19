@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "message": "Profile updated successfully.",
+  "data": {
+    "id": 1,
+    "phone": "9876543210",
+    "role": "customer",
+    "is_verified": true,
+    "profile": {
+      "display_name": "Aditya Pal",
+      "email": "aditya@example.com",
+      "phone_number": "+919876543210",
+      "profile_completed": true
+    },
+    "updated_at": "2026-04-14T13:00:00.000000Z"
+  }
+}

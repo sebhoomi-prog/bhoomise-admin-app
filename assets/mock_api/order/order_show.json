@@ -1,0 +1,35 @@
+{
+  "success": true,
+  "message": "Order retrieved.",
+  "data": {
+    "id": 5002,
+    "user_id": 1,
+    "assigned_store_id": 5,
+    "status": "processing",
+    "placed_at": "2026-04-14T09:15:00.000000Z",
+    "updated_at": "2026-04-14T09:16:00.000000Z",
+    "store": {
+      "id": 5,
+      "name": "Bhoomise Hub — Indiranagar",
+      "phone": "9988776655"
+    },
+    "lines": [
+      {
+        "id": 7001,
+        "product_id": 1,
+        "variant_id": 102,
+        "quantity": 1,
+        "product_name": "Fresh Oyster Mushrooms",
+        "variant_name": "500g",
+        "unit_price_minor": 28000,
+        "line_total_minor": 28000
+      }
+    ],
+    "summary": {
+      "currency": "INR",
+      "subtotal_minor": 28000,
+      "discount_minor": 0,
+      "total_minor": 28000
+    }
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "success": false,
+  "message": "Too many OTP requests. Please try again after 15 minutes."
+}

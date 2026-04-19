@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "message": "B2B supply orders",
+  "data": {
+    "orders": [
+      {
+        "id": "SO-24001",
+        "store_name": "Bhoomise Hub — Indiranagar",
+        "status": "in_transit",
+        "total_label": "₹42,800"
+      },
+      {
+        "id": "SO-24002",
+        "store_name": "Bhoomise Hub — Whitefield",
+        "status": "confirmed",
+        "total_label": "₹18,200"
+      }
+    ]
+  }
+}

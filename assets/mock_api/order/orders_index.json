@@ -1,0 +1,33 @@
+{
+  "success": true,
+  "message": "Orders retrieved.",
+  "data": {
+    "items": [
+      {
+        "id": 5001,
+        "user_id": 1,
+        "assigned_store_id": 5,
+        "status": "delivered",
+        "placed_at": "2026-04-10T14:20:00.000000Z",
+        "updated_at": "2026-04-11T18:00:00.000000Z",
+        "total_minor": 40000,
+        "currency": "INR"
+      },
+      {
+        "id": 5002,
+        "user_id": 1,
+        "assigned_store_id": 5,
+        "status": "processing",
+        "placed_at": "2026-04-14T09:15:00.000000Z",
+        "updated_at": "2026-04-14T09:16:00.000000Z",
+        "total_minor": 28000,
+        "currency": "INR"
+      }
+    ],
+    "meta": {
+      "current_page": 1,
+      "per_page": 15,
+      "total": 2
+    }
+  }
+}

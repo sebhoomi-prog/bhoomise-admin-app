@@ -1,0 +1,96 @@
+{
+  "success": true,
+  "message": "Admin master products",
+  "data": {
+    "brand_title": "Bhoomise",
+    "avatar_url": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?fm=jpg&fit=crop&w=128&q=80",
+    "eyebrow": "CURATORIAL CONTROL",
+    "title": "Master Products",
+    "description": "Define the fungal taxonomy for the marketplace. Manage core species, botanical metadata, and baseline imagery.",
+    "add_cta": "Add Species",
+    "stats": {
+      "total_catalog": {
+        "label": "TOTAL CATALOG",
+        "value": "60",
+        "sublabel": "Species"
+      },
+      "active_listings": {
+        "label": "ACTIVE LISTINGS",
+        "value": "08"
+      },
+      "archived": {
+        "label": "ARCHIVED",
+        "value": "05"
+      }
+    },
+    "search": {
+      "placeholder": "Search taxonomies (Shiitake, Oyster...)"
+    },
+    "filter_chips": [
+      { "id": "all", "label": "All Taxa", "selected": true },
+      { "id": "fungi", "label": "Fungi", "selected": false },
+      { "id": "med", "label": "Medicinals", "selected": false },
+      { "id": "wild", "label": "Foraged", "selected": false }
+    ],
+    "items": [
+      {
+        "kind": "product",
+        "name": "Shiitake",
+        "latin": "Lentinula edodes",
+        "image_url": "https://images.unsplash.com/photo-1566641568429-6e4e82514a52?fm=jpg&fit=crop&w=900&q=80",
+        "badge": "ORGANIC HIGH YIELD",
+        "badge_tone": "brand",
+        "stock_progress": 0.85,
+        "max_price_label": "MAX PRICE: $14.00/kg",
+        "stock_label": "STABLE STOCK",
+        "editor_initial": "JD",
+        "active_ago": "active 12m ago"
+      },
+      {
+        "kind": "product",
+        "name": "Lion's Mane",
+        "latin": "Hericium erinaceus",
+        "image_url": "https://images.unsplash.com/photo-1506806732259-39c2d29ccf3c?fm=jpg&fit=crop&w=900&q=80",
+        "badge": "WILD FORAGED",
+        "badge_tone": "muted",
+        "stock_progress": 0.4,
+        "max_price_label": "MAX PRICE: $22.00/kg",
+        "stock_label": "LOW ROTATION",
+        "editor_initial": "AK",
+        "active_ago": "active 2h ago"
+      },
+      {
+        "kind": "upload",
+        "title": "Upload New Species",
+        "body": "Drag and drop high-res imagery or connect to the mycological database.",
+        "link": "Browse taxonomy CSV"
+      },
+      {
+        "kind": "product",
+        "name": "Reishi",
+        "latin": "Ganoderma lucidum",
+        "image_url": "https://images.unsplash.com/photo-1606312619070-d48b4e001b4a?fm=jpg&fit=crop&w=900&q=80",
+        "badge": "PREMIUM TIER",
+        "badge_tone": "muted",
+        "stock_progress": 0.95,
+        "max_price_label": "MAX PRICE: $45.00/kg",
+        "stock_label": "FULL STOCK",
+        "editor_initial": "MR",
+        "active_ago": "active 1d ago"
+      },
+      {
+        "kind": "product",
+        "name": "King Oyster",
+        "latin": "Pleurotus eryngii",
+        "image_url": "https://images.unsplash.com/photo-1585651413233-fb6d63f4e2e0?fm=jpg&fit=crop&w=900&q=80",
+        "badge": "FULL STOCK",
+        "badge_tone": "brand",
+        "stock_progress": 0.7,
+        "max_price_label": "MAX PRICE: $18.00/kg",
+        "stock_label": "FULL STOCK",
+        "editor_initial": "JD",
+        "active_ago": "active 5m ago"
+      }
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "success": true,
+  "message": "Store inventory snapshot",
+  "data": {
+    "store_id": 5,
+    "store_name": "Bhoomise Hub — Indiranagar",
+    "summary": {
+      "sku_count": 24,
+      "low_stock": 3,
+      "out_of_stock": 1
+    },
+    "rows": [
+      {
+        "product_name": "Fresh Oyster Mushrooms",
+        "label": "500g",
+        "stock": 8,
+        "status": "low"
+      },
+      {
+        "product_name": "Fresh Oyster Mushrooms",
+        "label": "200g",
+        "stock": 48,
+        "status": "ok"
+      },
+      {
+        "product_name": "Button Mushrooms",
+        "label": "250g",
+        "stock": 0,
+        "status": "out"
+      }
+    ]
+  }
+}
