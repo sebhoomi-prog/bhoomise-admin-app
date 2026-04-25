@@ -1,3 +1,5 @@
+import '../core/constants/app_constants.dart';
+
 /// Backend selection for **data sources** registered in GetX bindings.
 ///
 /// **Production target:** Firebase — Authentication (phone / OTP), Cloud Firestore,
@@ -24,7 +26,7 @@ class BackendConfig {
   /// When non-empty, [ApiClient] is registered and REST data sources may be used.
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: '',
+    defaultValue: AppConstants.defaultApiBaseUrl,
   );
 
   /// True when a live API base URL is configured (`dart-define=API_BASE_URL=...`).

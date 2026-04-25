@@ -1,5 +1,10 @@
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../config/backend_config.dart';
+import '../../core/network/api_client.dart';
+import '../../core/session/app_session_service.dart';
+import '../../features/auth/data/datasources/auth_api_datasource.dart';
 import '../../features/auth/data/datasources/auth_firebase_datasource.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
@@ -13,7 +18,13 @@ import '../../features/auth/presentation/controllers/auth_controller.dart';
 class AuthDependencies {
   static void register() {
     Get.lazyPut<AuthRemoteDataSource>(
-      () => AuthFirebaseDataSource(),
+      () => BackendConfig.hasRestApi
+          ? AuthApiDataSource(
+              Get.find<ApiClient>(),
+              Get.find<AppSessionService>(),
+              Get.find<SharedPreferences>(),
+            )
+          : AuthFirebaseDataSource(),
       fenix: true,
     );
     Get.lazyPut<AuthRepository>(

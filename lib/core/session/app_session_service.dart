@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,6 +13,7 @@ class AppSessionService extends GetxService {
   final SharedPreferences _prefs;
 
   static const _kRole = 'bhoomise_session_app_role';
+  static const _kApiToken = 'bhoomise_session_api_token';
 
   final Rxn<AppRole> role = Rxn<AppRole>();
 
@@ -54,6 +57,18 @@ class AppSessionService extends GetxService {
 
   /// When restoring a session with no stored role (legacy), default to customer.
   AppRole get resolvedRoleForNavigation => role.value ?? AppRole.customer;
+
+  AppRole get effectiveRole => _pendingRole ?? role.value ?? AppRole.customer;
+
+  String? get apiToken => _prefs.getString(_kApiToken);
+
+  Future<void> persistApiToken(String token) async {
+    await _prefs.setString(_kApiToken, token);
+  }
+
+  Future<void> clearApiToken() async {
+    await _prefs.remove(_kApiToken);
+  }
 
   /// Primary shell route for the persisted or resolved role (post-auth / splash).
   String get mainShellRouteAfterAuth {
