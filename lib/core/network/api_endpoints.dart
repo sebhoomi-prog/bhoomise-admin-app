@@ -13,6 +13,8 @@ class ApiEndpoints {
   static const stores = AppConstants.stores;
   static const listingSubmissions = AppConstants.listingSubmissions;
   static const appDocs = AppConstants.appDocs;
+  static const users = AppConstants.users;
+  static const adminPhones = AppConstants.adminPhones;
   static String storeInventory(String storeId) =>
       '${AppConstants.stores}/$storeId/inventory';
 }

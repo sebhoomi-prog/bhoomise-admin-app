@@ -1,16 +1,18 @@
-import 'dart:convert';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../models/api/admin_api_models.dart';
+import '../../../../services/admin/admin_api_service.dart';
+import '../../../../services/api/api_client.dart';
 import '../widgets/admin_keyboard.dart';
 
-/// Figma **Product Approval** — curate vendor submissions (featured card, pipeline, secondary queue).
+/// **Product Approval** — curate vendor submissions from API.
 class AdminProductApprovalPage extends StatefulWidget {
   const AdminProductApprovalPage({super.key});
 
@@ -20,22 +22,51 @@ class AdminProductApprovalPage extends StatefulWidget {
 }
 
 class _AdminProductApprovalPageState extends State<AdminProductApprovalPage> {
-  late final Future<Map<String, dynamic>> _future;
   bool _archiveSelected = false;
+  List<ListingSubmission> _submissions = [];
+  bool _loading = true;
+  String? _error;
+  late final AdminApiService _api;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _api = AdminApiService(Get.find<ApiClient>());
+    _loadSubmissions();
   }
 
-  Future<Map<String, dynamic>> _load() async {
-    final raw = await rootBundle.loadString(
-      'assets/mock_api/admin/product_approval.json',
-    );
-    final m = jsonDecode(raw) as Map<String, dynamic>;
-    return m['data'] as Map<String, dynamic>? ?? {};
+  Future<void> _loadSubmissions() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final submissions = await _api.listSubmissions();
+      if (!mounted) return;
+      setState(() {
+        _submissions = submissions;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = '$e';
+        _loading = false;
+      });
+    }
   }
+
+  List<ListingSubmission> get _pendingSubmissions =>
+      _submissions.where((s) {
+        final status = s.approvalStatus?.toLowerCase() ?? '';
+        return status.isEmpty || status == 'pending';
+      }).toList();
+
+  List<ListingSubmission> get _archivedSubmissions =>
+      _submissions.where((s) {
+        final status = s.approvalStatus?.toLowerCase() ?? '';
+        return status == 'approved' || status == 'rejected';
+      }).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -43,154 +74,350 @@ class _AdminProductApprovalPageState extends State<AdminProductApprovalPage> {
     const barH = 80.0;
     final contentTop = top + barH + 8;
 
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _future,
-      builder: (context, snap) {
-        if (!snap.hasData) {
-          return const ColoredBox(
-            color: Color(0xFFF8F9FA),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        final d = snap.data!;
-        return ColoredBox(
-          color: const Color(0xFFF8F9FA),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(24, contentTop, 24, 120),
-                    sliver: SliverToBoxAdapter(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            (d['eyebrow'] as String? ?? '').toUpperCase(),
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              height: 16 / 12,
-                              letterSpacing: 2.4,
-                              color: DesignTokens.figmaHeroCtaGreen,
-                            ),
+    if (_loading) {
+      return const ColoredBox(
+        color: Color(0xFFF8F9FA),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return ColoredBox(
+        color: const Color(0xFFF8F9FA),
+        child: ErrorStateWidget(
+          message: _error!,
+          onRetry: _loadSubmissions,
+        ),
+      );
+    }
+
+    return ColoredBox(
+      color: const Color(0xFFF8F9FA),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          RefreshIndicator(
+            onRefresh: _loadSubmissions,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(24, contentTop, 24, 120),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'VENDOR SUBMISSIONS',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            height: 16 / 12,
+                            letterSpacing: 2.4,
+                            color: DesignTokens.figmaHeroCtaGreen,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            d['title'] as String? ?? 'Product Approval',
-                            style: GoogleFonts.manrope(
-                              fontSize: 48,
-                              fontWeight: FontWeight.w800,
-                              height: 1,
-                              letterSpacing: -1.2,
-                              color: DesignTokens.figmaSectionInk,
-                            ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Product Approval',
+                          style: GoogleFonts.manrope(
+                            fontSize: 48,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                            letterSpacing: -1.2,
+                            color: DesignTokens.figmaSectionInk,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            d['description'] as String? ?? '',
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              height: 26 / 16,
-                              color: const Color(0xFF555F6F),
-                            ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Review and approve vendor product submissions.',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            height: 26 / 16,
+                            color: const Color(0xFF555F6F),
                           ),
-                          const SizedBox(height: 24),
-                          _FilterPill(
-                            archiveLabel:
-                                (d['filter'] as Map<String, dynamic>? ?? {})[
-                                        'archive_label'] as String? ??
-                                    'Archive',
-                            pendingLabel:
-                                (d['filter'] as Map<String, dynamic>? ?? {})[
-                                        'pending_label'] as String? ??
-                                    'Pending',
-                            pendingCount: (d['filter']
-                                        as Map<String, dynamic>?)?['pending_count']
-                                    as int? ??
-                                12,
-                            archiveSelected: _archiveSelected,
-                            onArchive: () =>
-                                setState(() => _archiveSelected = true),
-                            onPending: () =>
-                                setState(() => _archiveSelected = false),
-                          ),
-                          const SizedBox(height: 48),
-                          _FeaturedCard(
-                            data: d['featured'] as Map<String, dynamic>? ?? {},
-                          ),
-                          const SizedBox(height: 24),
-                          _ReviewerNoteCard(
-                            data: d['reviewer_note'] as Map<String, dynamic>? ??
-                                {},
-                          ),
-                          const SizedBox(height: 24),
-                          _PipelineCard(
-                            data: d['pipeline'] as Map<String, dynamic>? ?? {},
-                          ),
-                          const SizedBox(height: 32),
-                          Text(
-                            d['secondary_title'] as String? ??
-                                'Secondary Queue',
-                            style: GoogleFonts.manrope(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              height: 28 / 20,
-                              letterSpacing: -0.5,
-                              color: DesignTokens.figmaSectionInk,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ..._secondaryTiles(
-                            d['secondary_items'] as List<dynamic>? ?? [],
-                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _FilterPill(
+                          archiveLabel: 'Archived',
+                          pendingLabel: 'Pending',
+                          pendingCount: _pendingSubmissions.length,
+                          archiveSelected: _archiveSelected,
+                          onArchive: () =>
+                              setState(() => _archiveSelected = true),
+                          onPending: () =>
+                              setState(() => _archiveSelected = false),
+                        ),
+                        const SizedBox(height: 48),
+                        if (_submissions.isEmpty)
+                          const EmptyStateWidget(
+                            title: 'No Submissions',
+                            message: 'Vendor product submissions will appear here for review.',
+                            icon: Icons.assignment_outlined,
+                          )
+                        else if (_archiveSelected) ...[
+                          if (_archivedSubmissions.isEmpty)
+                            _EmptyQueueCard(
+                              title: 'No Archived Submissions',
+                              subtitle: 'Approved and rejected submissions will appear here.',
+                            )
+                          else
+                            ..._buildSubmissionCards(_archivedSubmissions),
+                        ] else ...[
+                          if (_pendingSubmissions.isEmpty)
+                            _EmptyQueueCard(
+                              title: 'Queue Clear',
+                              subtitle: 'No pending submissions to review.',
+                            )
+                          else
+                            ..._buildSubmissionCards(_pendingSubmissions),
                         ],
-                      ),
+                      ],
                     ),
                   ),
-                ],
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _ProductApprovalAppBar(
+              topPadding: top,
+              title: AppStrings.appName,
+              onGridTap: () {
+                adminDismissKeyboard();
+                Get.snackbar(
+                  'Shortcuts',
+                  'Use bottom navigation to switch admin sections.',
+                );
+              },
+              onBellTap: () {
+                adminDismissKeyboard();
+                Get.snackbar(
+                  'Notifications',
+                  'Alerts will appear here when connected to backend.',
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildSubmissionCards(List<ListingSubmission> submissions) {
+    final out = <Widget>[];
+    for (var i = 0; i < submissions.length; i++) {
+      final s = submissions[i];
+      if (i > 0) out.add(const SizedBox(height: 16));
+      out.add(_SubmissionCard(
+        submission: s,
+        onApprove: () => _approveSubmission(s),
+        onReject: () => _rejectSubmission(s),
+      ));
+    }
+    return out;
+  }
+
+  Future<void> _approveSubmission(ListingSubmission s) async {
+    try {
+      await _api.updateSubmission(s.id!, approvalStatus: 'approved');
+      Get.snackbar('Approved', 'Submission has been approved.');
+      _loadSubmissions();
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to approve: $e');
+    }
+  }
+
+  Future<void> _rejectSubmission(ListingSubmission s) async {
+    try {
+      await _api.updateSubmission(s.id!, approvalStatus: 'rejected');
+      Get.snackbar('Rejected', 'Submission has been rejected.');
+      _loadSubmissions();
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to reject: $e');
+    }
+  }
+}
+
+class _SubmissionCard extends StatelessWidget {
+  const _SubmissionCard({
+    required this.submission,
+    required this.onApprove,
+    required this.onReject,
+  });
+
+  final ListingSubmission submission;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = submission.approvalStatus?.toLowerCase() ?? 'pending';
+    final isPending = status.isEmpty || status == 'pending';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: DesignTokens.figmaHeroCtaGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.inventory_2_outlined,
+                  color: DesignTokens.figmaHeroCtaGreen,
+                ),
               ),
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: _ProductApprovalAppBar(
-                  topPadding: top,
-                  title: d['brand_title'] as String? ?? AppStrings.appName,
-                  avatarUrl: d['avatar_url'] as String?,
-                  onGridTap: () {
-                    adminDismissKeyboard();
-                    Get.snackbar(
-                      'Shortcuts',
-                      'Use bottom navigation to switch admin sections.',
-                    );
-                  },
-                  onBellTap: () {
-                    adminDismissKeyboard();
-                    Get.snackbar(
-                      'Notifications',
-                      'Alerts will appear here when connected to backend.',
-                    );
-                  },
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      submission.title,
+                      style: GoogleFonts.manrope(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: DesignTokens.figmaSectionInk,
+                      ),
+                    ),
+                    Text(
+                      'Stock: ${submission.stock ?? 0}',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFF555F6F),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isPending
+                      ? const Color(0xFFFFF7ED)
+                      : status == 'approved'
+                          ? const Color(0xFFD1FAE5)
+                          : const Color(0xFFFFE4E6),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  status.toUpperCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: isPending
+                        ? const Color(0xFFEA580C)
+                        : status == 'approved'
+                            ? const Color(0xFF065F46)
+                            : const Color(0xFF9F1239),
+                  ),
                 ),
               ),
             ],
           ),
-        );
-      },
+          if (isPending) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onReject,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFDC2626),
+                      side: const BorderSide(color: Color(0xFFDC2626)),
+                    ),
+                    child: const Text('Reject'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: onApprove,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: DesignTokens.figmaHeroCtaGreen,
+                    ),
+                    child: const Text('Approve'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
+}
 
-  List<Widget> _secondaryTiles(List<dynamic> raw) {
-    final out = <Widget>[];
-    for (var i = 0; i < raw.length; i++) {
-      final m = raw[i] as Map<String, dynamic>? ?? {};
-      if (i > 0) out.add(const SizedBox(height: 16));
-      out.add(_SecondaryQueueTile(data: m));
-    }
-    return out;
+class _EmptyQueueCard extends StatelessWidget {
+  const _EmptyQueueCard({
+    required this.title,
+    required this.subtitle,
+  });
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.check_circle_outline_rounded,
+            size: 48,
+            color: DesignTokens.figmaHeroCtaGreen.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: GoogleFonts.manrope(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: DesignTokens.figmaSectionInk,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: const Color(0xFF555F6F),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -198,14 +425,12 @@ class _ProductApprovalAppBar extends StatelessWidget {
   const _ProductApprovalAppBar({
     required this.topPadding,
     required this.title,
-    this.avatarUrl,
     required this.onGridTap,
     required this.onBellTap,
   });
 
   final double topPadding;
   final String title;
-  final String? avatarUrl;
   final VoidCallback onGridTap;
   final VoidCallback onBellTap;
 
@@ -262,34 +487,6 @@ class _ProductApprovalAppBar extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDEE9FC),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: DesignTokens.figmaHeroCtaGreen.withValues(
-                          alpha: 0.1,
-                        ),
-                        width: 2,
-                      ),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: avatarUrl != null && avatarUrl!.isNotEmpty
-                        ? Image.network(
-                            avatarUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Icon(
-                              Icons.person_rounded,
-                              color: DesignTokens.figmaLabelMuted,
-                            ),
-                          )
-                        : Icon(
-                            Icons.person_rounded,
-                            color: DesignTokens.figmaLabelMuted,
-                          ),
-                  ),
                 ],
               ),
             ),

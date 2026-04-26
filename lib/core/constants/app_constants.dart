@@ -1,11 +1,10 @@
 class AppConstants {
   AppConstants._();
 
-  /// Production API base URL.
+  /// Production API base URL for deployed hostinger backend.
   ///
-  /// Laravel routes are nested under `/api/...` on this host.
-  /// Our endpoint constants include an `/api` prefix, so this default intentionally
-  /// ends with `/api` as well to match the deployed routing (and Postman collection).
+  /// This deployment is served under `/api` directory, while endpoints include
+  /// `/api/...` path constants, resulting in final URLs like `/api/api/stores`.
   static const defaultApiBaseUrl = 'https://bhoomise.tech/api';
 
   static const apiPrefix = '/api';
@@ -20,6 +19,7 @@ class AppConstants {
   static const listingSubmissions = '$apiPrefix/listing-submissions';
   static const appDocs = '$apiPrefix/app';
   static const adminPhones = '$apiPrefix/admin-phones';
+  static const users = '$apiPrefix/users';
   static const fast2SmsWebhook = '$apiPrefix/webhooks/fast2sms/delivery-report';
 
   static const headerAccept = 'Accept';

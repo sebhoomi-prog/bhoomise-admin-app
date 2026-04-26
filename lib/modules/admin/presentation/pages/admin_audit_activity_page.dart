@@ -1,9 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/design_tokens.dart';
-import '../../data/admin_metrics_firestore.dart';
+import '../../../../services/admin/admin_api_service.dart';
+import '../../../../services/api/api_client.dart';
+import '../../data/admin_metrics_api_service.dart';
 
 /// Order pipeline snapshot + recent order documents (admin-readable).
 class AdminAuditActivityPage extends StatefulWidget {
@@ -31,19 +33,18 @@ class _AdminAuditActivityPageState extends State<AdminAuditActivityPage> {
       _error = null;
     });
     try {
-      final metrics = await AdminMetricsFirestore().fetch();
-      final orders = await FirebaseFirestore.instance
-          .collection('orders')
-          .limit(40)
-          .get();
+      final client = Get.find<ApiClient>();
+      final api = AdminApiService(client);
+      final metricsService = AdminMetricsApiService(client);
+      final metrics = await metricsService.fetch();
+      final orders = await api.listOrders();
       final rows = <Map<String, dynamic>>[];
-      for (final d in orders.docs) {
-        final m = d.data();
+      for (final o in orders) {
         rows.add({
-          'id': d.id,
-          'status': m['status'] ?? '—',
-          'storeId': m['storeId'] ?? '—',
-          'customerId': m['customerId'] ?? '—',
+          'id': o.id,
+          'status': o.status.isEmpty ? '—' : o.status,
+          'storeId': o.storeId ?? '—',
+          'customerId': o.customerUserId?.toString() ?? '—',
         });
       }
       if (!mounted) return;

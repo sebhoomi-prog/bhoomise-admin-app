@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 
+import '../constants/app_constants.dart';
+
 /// Single place that constructs [Dio] for [ApiClient]. Add [AuthBearerInterceptor] via
 /// [extraInterceptors] when JWT session exists.
 class DioFactory {
@@ -12,10 +14,11 @@ class DioFactory {
     final dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 20),
-        receiveTimeout: const Duration(seconds: 20),
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 45),
         headers: <String, dynamic>{
           Headers.contentTypeHeader: Headers.jsonContentType,
+          AppConstants.headerAccept: AppConstants.valueApplicationJson,
         },
       ),
     );

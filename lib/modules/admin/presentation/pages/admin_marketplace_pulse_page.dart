@@ -1,20 +1,19 @@
-import 'dart:convert';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/routes/app_routes.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/design_tokens.dart';
-import '../../data/admin_metrics_firestore.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../services/api/api_client.dart';
+import '../../data/admin_metrics_api_service.dart';
 import '../../navigation/presentation/controllers/admin_shell_controller.dart';
 import '../widgets/admin_keyboard.dart';
 
-/// **Marketplace Pulse** — admin dashboard home. Layout copy comes from assets;
-/// headline numbers are merged from Firestore via [AdminMetricsFirestore].
+/// **Marketplace Pulse** — admin dashboard home with live data from API.
 class AdminMarketplacePulsePage extends StatefulWidget {
   const AdminMarketplacePulsePage({super.key});
 
@@ -27,10 +26,14 @@ class _AdminMarketplacePulsePageState extends State<AdminMarketplacePulsePage> {
   Map<String, dynamic>? _pulse;
   bool _loading = true;
   Object? _loadErr;
+  late final AdminMetricsApiService _metricsService;
 
   @override
   void initState() {
     super.initState();
+    _metricsService = AdminMetricsApiService(
+      Get.find<ApiClient>(),
+    );
     _reload(showBlockingSpinner: true);
   }
 
@@ -116,16 +119,20 @@ class _AdminMarketplacePulsePageState extends State<AdminMarketplacePulsePage> {
   }
 
   Future<Map<String, dynamic>> _loadMerged() async {
-    final raw = await rootBundle.loadString(
-      'assets/mock_api/admin/marketplace_pulse.json',
-    );
-    final m = jsonDecode(raw) as Map<String, dynamic>;
-    final d = Map<String, dynamic>.from(
-      m['data'] as Map<String, dynamic>? ?? {},
-    );
-    final metrics = await AdminMetricsFirestore().fetch();
+    final metrics = await _metricsService.fetch();
+    final d = <String, dynamic>{
+      'greeting': _greeting(),
+      'brand': AppStrings.appName,
+    };
     _applyLiveMetrics(d, metrics);
     return d;
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
   void _applyLiveMetrics(
@@ -249,40 +256,9 @@ class _AdminMarketplacePulsePageState extends State<AdminMarketplacePulsePage> {
     if (_loadErr != null && _pulse == null) {
       return ColoredBox(
         color: const Color(0xFFF8F9FA),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Could not load Marketplace Pulse',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.manrope(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: DesignTokens.figmaSectionInk,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '$_loadErr',
-                  textAlign: TextAlign.center,
-                  maxLines: 5,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: const Color(0xFF555F6F),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () => _reload(showBlockingSpinner: true),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
+        child: ErrorStateWidget(
+          message: '$_loadErr',
+          onRetry: () => _reload(showBlockingSpinner: true),
         ),
       );
     }

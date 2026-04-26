@@ -5,6 +5,7 @@ import '../../config/backend_config.dart';
 import '../../core/location/delivery_location_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_interceptors.dart';
+import '../../core/network/api_origin_normalize.dart';
 import '../../core/network/connectivity_sync_service.dart';
 import '../../core/network/dio_factory.dart';
 import '../../core/network/mock_asset_client.dart';
@@ -45,7 +46,7 @@ class CoreDependencies {
       Get.lazyPut<ApiClient>(
         () => ApiClient(
           dio: DioFactory.create(
-            baseUrl: BackendConfig.apiBaseUrl.trim(),
+            baseUrl: normalizeApiOriginForDio(BackendConfig.apiBaseUrl),
             extraInterceptors: [
               AuthBearerInterceptor(
                 () => Get.find<AppSessionService>().apiToken,

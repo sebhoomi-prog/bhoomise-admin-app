@@ -11,8 +11,8 @@ import '../../../../core/theme/design_tokens.dart';
 import '../controllers/auth_controller.dart';
 import '../widgets/otp/otp_verification_figma_body.dart';
 
-/// OTP verification — shared for all roles (customer / partner / admin flows).
-/// Optional Get [arguments]: `phoneE164`, `intent` (`login`|`signup`), `role` (`customer`|`partner`|`admin`).
+/// OTP verification for admin login.
+/// Optional Get [arguments]: `phoneE164`, `intent` (`login`|`signup`), `role` (`admin`).
 class OtpVerificationPage extends StatefulWidget {
   const OtpVerificationPage({super.key});
 
@@ -168,7 +168,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
         Get.find<SharedPreferences>(),
         phoneE164: phone,
         intent: (_args?['intent'] as String?) ?? 'login',
-        role: (_args?['role'] as String?) ?? 'customer',
+        role: (_args?['role'] as String?) ?? 'admin',
       );
       if (!mounted) return;
       _startTimer();
@@ -199,7 +199,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
     if (Navigator.of(context).canPop()) {
       Get.back<void>();
     } else {
-      Get.offAllNamed(AppRoutes.home);
+      Get.offAllNamed(AppRoutes.login);
     }
   }
 

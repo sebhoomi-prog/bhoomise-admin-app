@@ -1,4 +1,4 @@
-package com.bhoomise
+package com.bhoomise.admin
 
 import io.flutter.embedding.android.FlutterActivity
 

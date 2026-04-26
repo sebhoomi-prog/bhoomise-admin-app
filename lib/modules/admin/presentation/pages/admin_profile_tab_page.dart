@@ -1,16 +1,19 @@
+import 'dart:io';
 import 'dart:ui' show ImageFilter;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../app/routes/app_routes.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/notifications/in_app_notifications.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../features/auth/presentation/controllers/auth_controller.dart';
-import '../../data/admin_metrics_firestore.dart';
+import '../../../../services/api/api_client.dart';
+import '../../data/admin_metrics_api_service.dart';
 import '../../navigation/presentation/controllers/admin_shell_controller.dart';
 
 const Color _kGreen = Color(0xFF006B2C);
@@ -34,20 +37,129 @@ class AdminProfileTabPage extends StatefulWidget {
 class _AdminProfileTabPageState extends State<AdminProfileTabPage> {
   AdminMetricsSnapshot? _metrics;
   DateTime? _metricsAt;
+  String _userName = 'Admin';
+  String? _profileImagePath;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _loadMetrics();
+    _loadUserName();
+    _loadProfileImage();
+  }
+
+  Future<void> _loadUserName() async {
+    try {
+      final auth = Get.find<AuthController>();
+      final user = auth.currentUser.value;
+      if (user != null && mounted) {
+        setState(() {
+          _userName = user.phoneNumber ?? 'Admin';
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadMetrics() async {
-    final m = await AdminMetricsFirestore().fetch();
+    try {
+      final apiClient = Get.find<ApiClient>();
+      final service = AdminMetricsApiService(apiClient);
+      final m = await service.fetch();
+      if (!mounted) return;
+      setState(() {
+        _metrics = m;
+        _metricsAt = DateTime.now();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _metrics = AdminMetricsSnapshot(
+          productsCount: 0,
+          ordersCount: 0,
+          usersCount: 0,
+          storesCount: 0,
+          loadError: '$e',
+        );
+        _metricsAt = DateTime.now();
+      });
+    }
+  }
+
+  Future<void> _loadProfileImage() async {
+    try {
+      final prefs = Get.find<SharedPreferences>();
+      final saved = prefs.getString('admin_profile_image_path');
+      if (!mounted) return;
+      setState(() => _profileImagePath = saved);
+    } catch (_) {}
+  }
+
+  Future<void> _pickProfileImage(ImageSource source) async {
+    try {
+      final file = await _picker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 1080,
+      );
+      if (file == null) return;
+      final prefs = Get.find<SharedPreferences>();
+      await prefs.setString('admin_profile_image_path', file.path);
+      if (!mounted) return;
+      setState(() => _profileImagePath = file.path);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update profile photo: $e')),
+      );
+    }
+  }
+
+  Future<void> _removeProfileImage() async {
+    final prefs = Get.find<SharedPreferences>();
+    await prefs.remove('admin_profile_image_path');
     if (!mounted) return;
-    setState(() {
-      _metrics = m;
-      _metricsAt = DateTime.now();
-    });
+    setState(() => _profileImagePath = null);
+  }
+
+  void _showPhotoOptions() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take photo'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickProfileImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickProfileImage(ImageSource.gallery);
+              },
+            ),
+            if (_profileImagePath != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded),
+                title: const Text('Remove photo'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _removeProfileImage();
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   void _openSettingsSheet() {
@@ -118,7 +230,12 @@ class _AdminProfileTabPageState extends State<AdminProfileTabPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const _AdminHeroSection(avatarUrl: _kAvatarUrl),
+                  _AdminHeroSection(
+                    avatarUrl: _kAvatarUrl,
+                    profileImagePath: _profileImagePath,
+                    userName: _userName,
+                    onEditPhoto: _showPhotoOptions,
+                  ),
                   const SizedBox(height: 40),
                   _AdminBentoMetrics(
                     metrics: _metrics,
@@ -224,12 +341,28 @@ class _AdminProfileHeader extends StatelessWidget {
 }
 
 class _AdminHeroSection extends StatelessWidget {
-  const _AdminHeroSection({required this.avatarUrl});
+  const _AdminHeroSection({
+    required this.avatarUrl,
+    required this.profileImagePath,
+    required this.userName,
+    required this.onEditPhoto,
+  });
 
   final String avatarUrl;
+  final String? profileImagePath;
+  final String userName;
+  final VoidCallback onEditPhoto;
 
   @override
   Widget build(BuildContext context) {
+    ImageProvider avatarProvider = NetworkImage(avatarUrl);
+    if (profileImagePath != null && profileImagePath!.isNotEmpty) {
+      final file = File(profileImagePath!);
+      if (file.existsSync()) {
+        avatarProvider = FileImage(file);
+      }
+    }
+
     return Column(
       children: [
         Center(
@@ -282,8 +415,8 @@ class _AdminHeroSection extends StatelessWidget {
                     ],
                   ),
                   child: ClipOval(
-                    child: Image.network(
-                      avatarUrl,
+                    child: Image(
+                      image: avatarProvider,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => ColoredBox(
                         color: _kMetricsBg,
@@ -299,7 +432,12 @@ class _AdminHeroSection extends StatelessWidget {
                 Positioned(
                   right: 4,
                   bottom: 4,
-                  child: Container(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onEditPhoto,
+                      customBorder: const CircleBorder(),
+                      child: Container(
                     width: 29,
                     height: 29,
                     decoration: BoxDecoration(
@@ -318,9 +456,11 @@ class _AdminHeroSection extends StatelessWidget {
                       ],
                     ),
                     child: const Icon(
-                      Icons.verified_rounded,
+                      Icons.camera_alt_rounded,
                       color: Colors.white,
                       size: 14,
+                    ),
+                  ),
                     ),
                   ),
                 ),
@@ -340,20 +480,17 @@ class _AdminHeroSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Obx(() {
-          String name = 'Jordan Thorne';
-          return Text(
-            name,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.manrope(
-              fontSize: 36,
-              height: 40 / 36,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.9,
-              color: _kInk,
-            ),
-          );
-        }),
+        Text(
+          userName,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.manrope(
+            fontSize: 36,
+            height: 40 / 36,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.9,
+            color: _kInk,
+          ),
+        ),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -486,9 +623,9 @@ class _AdminQuickActions extends StatelessWidget {
 class _AdminAlertsFeed extends StatelessWidget {
   const _AdminAlertsFeed();
 
-  String _timeShort(Timestamp? t) {
+  String _timeShort(DateTime? t) {
     if (t == null) return '';
-    final d = t.toDate().toLocal();
+    final d = t.toLocal();
     final h = d.hour.toString().padLeft(2, '0');
     final m = d.minute.toString().padLeft(2, '0');
     return '$h:$m';
@@ -513,7 +650,7 @@ class _AdminAlertsFeed extends StatelessWidget {
             ),
           ),
         ),
-        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        StreamBuilder<List<InAppNotification>>(
           stream: inbox.watchAdminFeed(limit: 12),
           builder: (context, snap) {
             if (snap.hasError) {
@@ -522,7 +659,7 @@ class _AdminAlertsFeed extends StatelessWidget {
                 style: GoogleFonts.inter(fontSize: 13, color: _kBodyMuted),
               );
             }
-            if (!snap.hasData || snap.data!.docs.isEmpty) {
+            if (!snap.hasData || snap.data!.isEmpty) {
               return Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -540,10 +677,10 @@ class _AdminAlertsFeed extends StatelessWidget {
                 ),
               );
             }
-            final docs = snap.data!.docs;
+            final notifications = snap.data!;
             return Column(
               children: [
-                for (final d in docs)
+                for (final n in notifications)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Material(
@@ -580,7 +717,7 @@ class _AdminAlertsFeed extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      d.data()['title'] as String? ?? 'Notice',
+                                      n.title,
                                       style: GoogleFonts.inter(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w700,
@@ -589,7 +726,7 @@ class _AdminAlertsFeed extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      d.data()['body'] as String? ?? '',
+                                      n.body,
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
                                         height: 16 / 12,
@@ -600,9 +737,7 @@ class _AdminAlertsFeed extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                _timeShort(
-                                  d.data()['createdAt'] as Timestamp?,
-                                ),
+                                _timeShort(n.createdAt),
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,

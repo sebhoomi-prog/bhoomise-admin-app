@@ -1,15 +1,16 @@
-import 'dart:convert';
 import 'dart:ui' show ImageFilter;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/design_tokens.dart';
 import '../../../../core/utils/money.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../models/api/admin_api_models.dart';
+import '../../../../services/admin/admin_api_service.dart';
+import '../../../../services/api/api_client.dart';
 import '../widgets/admin_keyboard.dart';
 import '../widgets/admin_product_editor_sheet.dart';
 
@@ -23,10 +24,12 @@ class AdminMasterProductsPage extends StatefulWidget {
 }
 
 class _AdminMasterProductsPageState extends State<AdminMasterProductsPage> {
-  Map<String, dynamic>? _chrome;
   int _chipIndex = 0;
   final _searchCtrl = TextEditingController();
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  List<Product> _products = [];
+  bool _loading = true;
+  String? _error;
+  late final AdminApiService _api;
 
   void _onSearchChanged() => setState(() {});
 
@@ -34,7 +37,8 @@ class _AdminMasterProductsPageState extends State<AdminMasterProductsPage> {
   void initState() {
     super.initState();
     _searchCtrl.addListener(_onSearchChanged);
-    _loadChrome();
+    _api = AdminApiService(Get.find<ApiClient>());
+    _loadProducts();
   }
 
   @override
@@ -44,13 +48,25 @@ class _AdminMasterProductsPageState extends State<AdminMasterProductsPage> {
     super.dispose();
   }
 
-  Future<void> _loadChrome() async {
-    final raw = await rootBundle.loadString(
-      'assets/mock_api/admin/master_products.json',
-    );
-    final m = jsonDecode(raw) as Map<String, dynamic>;
-    if (!mounted) return;
-    setState(() => _chrome = m['data'] as Map<String, dynamic>? ?? {});
+  Future<void> _loadProducts() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final products = await _api.listProducts();
+      if (!mounted) return;
+      setState(() {
+        _products = products;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = '$e';
+        _loading = false;
+      });
+    }
   }
 
   static const _searchFill = Color(0xFFD9E3F6);
@@ -58,20 +74,17 @@ class _AdminMasterProductsPageState extends State<AdminMasterProductsPage> {
   static const _muted = Color(0xFF555F6F);
   static const _avatarBg = Color(0xFFD9E3F6);
 
-  Map<String, dynamic> _statsFromDocs(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
-  ) {
+  Map<String, dynamic> _statsFromProducts(List<Product> products) {
     var pub = 0;
     var draft = 0;
-    for (final doc in docs) {
-      final p = doc.data()['published'] as bool?;
-      if (p == false) {
-        draft++;
-      } else {
+    for (final p in products) {
+      if (p.published) {
         pub++;
+      } else {
+        draft++;
       }
     }
-    final total = '${docs.length}';
+    final total = '${products.length}';
     final pubS = pub.toString().padLeft(2, '0');
     final draftS = draft.toString().padLeft(2, '0');
     return {
@@ -91,67 +104,55 @@ class _AdminMasterProductsPageState extends State<AdminMasterProductsPage> {
     };
   }
 
-  List<QueryDocumentSnapshot<Map<String, dynamic>>> _filterDocs(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
-  ) {
+  List<Product> _filterProducts(List<Product> products) {
     final q = _searchCtrl.text.trim().toLowerCase();
-    var list = docs;
+    var list = products;
     if (q.isNotEmpty) {
-      list = docs.where((d) {
-        final data = d.data();
-        final n = (data['name'] as String? ?? '').toLowerCase();
-        final desc = (data['description'] as String? ?? '').toLowerCase();
+      list = products.where((p) {
+        final n = p.name.toLowerCase();
+        final desc = (p.description ?? '').toLowerCase();
         return n.contains(q) || desc.contains(q);
       }).toList();
     }
     if (_chipIndex == 1) {
-      return list.where((d) => d.data()['published'] != false).toList();
+      return list.where((p) => p.published).toList();
     }
     if (_chipIndex == 2) {
-      return list.where((d) => d.data()['published'] == false).toList();
+      return list.where((p) => !p.published).toList();
     }
     return list;
   }
 
-  Map<String, dynamic> _docToCardMap(
-    QueryDocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
-    final data = doc.data();
-    final variants = data['variants'] as List<dynamic>? ?? [];
+  Map<String, dynamic> _productToCardMap(Product product) {
     var maxStock = 0;
     var maxPrice = 0;
-    for (final v in variants) {
-      final m = v as Map<String, dynamic>;
-      final st = (m['stock'] as num?)?.toInt() ?? 0;
-      final pr = (m['priceMinor'] as num?)?.toInt() ?? 0;
-      if (st > maxStock) maxStock = st;
-      if (pr > maxPrice) maxPrice = pr;
+    for (final v in product.variants) {
+      if (v.stock > maxStock) maxStock = v.stock;
+      if (v.priceMinor > maxPrice) maxPrice = v.priceMinor;
     }
-    final published = data['published'] as bool? ?? true;
-    final desc = data['description'] as String? ?? '';
+    final desc = product.description ?? '';
     final latin = desc.length > 90 ? '${desc.substring(0, 87)}…' : desc;
-    final name = data['name'] as String? ?? 'Untitled';
     return {
-      'name': name,
+      'name': product.name,
       'latin': latin.isEmpty ? '—' : latin,
-      'image_url': data['image_url'] as String? ?? '',
+      'image_url': product.imageUrl ?? '',
       'pack_sku_line':
-          '${variants.length} pack size${variants.length == 1 ? '' : 's'} in catalog',
-      'badge': published ? 'PUBLISHED' : 'DRAFT',
-      'badge_tone': published ? 'brand' : 'muted',
+          '${product.variants.length} pack size${product.variants.length == 1 ? '' : 's'} in catalog',
+      'badge': product.published ? 'PUBLISHED' : 'DRAFT',
+      'badge_tone': product.published ? 'brand' : 'muted',
       'stock_progress': (maxStock / 120.0).clamp(0.0, 1.0),
       'max_price_label': 'MAX: ${formatInrMinor(maxPrice)}',
       'stock_label': maxStock <= 10 ? 'LOW STOCK' : 'IN STOCK',
-      'editor_initial': name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '?',
-      'active_ago': doc.id.length > 8 ? doc.id.substring(doc.id.length - 8) : doc.id,
+      'editor_initial': product.name.isNotEmpty ? product.name.substring(0, 1).toUpperCase() : '?',
+      'active_ago': product.id.length > 8 ? product.id.substring(product.id.length - 8) : product.id,
     };
   }
 
   List<Widget> _buildProductRows(
     BuildContext context,
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    List<Product> products,
   ) {
-    if (docs.isEmpty) {
+    if (products.isEmpty) {
       return [
         Padding(
           padding: const EdgeInsets.only(top: 24),
@@ -166,19 +167,20 @@ class _AdminMasterProductsPageState extends State<AdminMasterProductsPage> {
       ];
     }
     final out = <Widget>[];
-    for (var i = 0; i < docs.length; i++) {
+    for (var i = 0; i < products.length; i++) {
       if (i > 0) out.add(const SizedBox(height: 32));
-      final doc = docs[i];
+      final product = products[i];
       out.add(
         _SpeciesProductCard(
-          data: _docToCardMap(doc),
+          data: _productToCardMap(product),
           onEdit: () {
             adminDismissKeyboard();
             showAdminProductEditorSheet(
               context,
-              db: _db,
-              documentId: doc.id,
-              initial: doc.data(),
+              api: _api,
+              productId: product.id,
+              initial: product,
+              onSaved: _loadProducts,
             );
           },
         ),
@@ -192,89 +194,78 @@ class _AdminMasterProductsPageState extends State<AdminMasterProductsPage> {
     final top = MediaQuery.paddingOf(context).top;
     const barH = 80.0;
     final contentTop = top + barH + 8;
-    final chrome = _chrome;
-
-    if (chrome == null) {
-      return const ColoredBox(
-        color: Color(0xFFF8F9FA),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
 
     return ColoredBox(
       color: const Color(0xFFF8F9FA),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: _db.collection('products').snapshots(),
-            builder: (context, snap) {
-              if (snap.hasError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Text(
-                      '${snap.error}',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+          Builder(
+            builder: (context) {
+              if (_error != null) {
+                return ErrorStateWidget(
+                  message: _error!,
+                  onRetry: _loadProducts,
                 );
               }
-              if (snap.connectionState == ConnectionState.waiting &&
-                  !snap.hasData) {
+              if (_loading) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final docs = snap.data?.docs ?? [];
-              final stats = _statsFromDocs(docs);
-              final filtered = _filterDocs(docs);
+              final stats = _statsFromProducts(_products);
+              final filtered = _filterProducts(_products);
 
-              return CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(24, contentTop, 24, 120),
-                    sliver: SliverToBoxAdapter(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            (chrome['eyebrow'] as String? ?? '').toUpperCase(),
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              height: 16 / 11,
-                              letterSpacing: 2.2,
-                              color: DesignTokens.figmaHeroCtaGreen,
+              return RefreshIndicator(
+                onRefresh: _loadProducts,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(24, contentTop, 24, 120),
+                      sliver: SliverToBoxAdapter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'PRODUCT CATALOG',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                height: 16 / 11,
+                                letterSpacing: 2.2,
+                                color: DesignTokens.figmaHeroCtaGreen,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            chrome['title'] as String? ?? 'Master Products',
-                            style: GoogleFonts.manrope(
-                              fontSize: 48,
-                              fontWeight: FontWeight.w800,
-                              height: 1,
-                              letterSpacing: -1.2,
-                              color: DesignTokens.figmaSectionInk,
+                            const SizedBox(height: 8),
+                            Text(
+                              'Master Products',
+                              style: GoogleFonts.manrope(
+                                fontSize: 48,
+                                fontWeight: FontWeight.w800,
+                                height: 1,
+                                letterSpacing: -1.2,
+                                color: DesignTokens.figmaSectionInk,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            chrome['description'] as String? ?? '',
-                            style: GoogleFonts.inter(
-                              fontSize: 18,
-                              height: 28 / 18,
-                              color: _muted,
+                            const SizedBox(height: 8),
+                            Text(
+                              'Manage your product catalog and SKU variants.',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                height: 28 / 18,
+                                color: _muted,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 24),
-                          _AddSpeciesCta(
-                            label: chrome['add_cta'] as String? ?? 'Add product',
-                            onTap: () {
-                              adminDismissKeyboard();
-                              showAdminProductEditorSheet(
-                                context,
-                                db: _db,
+                            const SizedBox(height: 24),
+                            _AddSpeciesCta(
+                              label: 'Add product',
+                              onTap: () {
+                                adminDismissKeyboard();
+                                showAdminProductEditorSheet(
+                                  context,
+                                  api: _api,
+                                  onSaved: _loadProducts,
                               );
                             },
                           ),
@@ -283,9 +274,7 @@ class _AdminMasterProductsPageState extends State<AdminMasterProductsPage> {
                           const SizedBox(height: 32),
                           _SearchRow(
                             controller: _searchCtrl,
-                            hint: (chrome['search'] as Map<String, dynamic>? ??
-                                    const {})['placeholder'] as String? ??
-                                'Search products…',
+                            hint: 'Search products…',
                           ),
                           const SizedBox(height: 16),
                           _CatalogFilterChips(
@@ -297,7 +286,7 @@ class _AdminMasterProductsPageState extends State<AdminMasterProductsPage> {
                             data: {
                               'title': 'Catalog source',
                               'body':
-                                  'SKU rows are stored in Firestore `products`. '
+                                  'SKU rows are managed via REST API. '
                                   'Vendor uploads arrive via SPORE (listing_submissions) before publish.',
                               'link': 'Tips',
                             },
@@ -310,12 +299,20 @@ class _AdminMasterProductsPageState extends State<AdminMasterProductsPage> {
                             },
                           ),
                           const SizedBox(height: 32),
-                          ..._buildProductRows(context, filtered),
+                          if (_products.isEmpty)
+                            const EmptyStateWidget(
+                              title: 'No Products Yet',
+                              message: 'Add your first product to start building your catalog.',
+                              icon: Icons.inventory_2_outlined,
+                            )
+                          else
+                            ..._buildProductRows(context, filtered),
                         ],
                       ),
                     ),
                   ),
                 ],
+                ),
               );
             },
           ),
@@ -325,8 +322,7 @@ class _AdminMasterProductsPageState extends State<AdminMasterProductsPage> {
             right: 0,
             child: _MasterProductsAppBar(
               topPadding: top,
-              title: chrome['brand_title'] as String? ?? AppStrings.appName,
-              avatarUrl: chrome['avatar_url'] as String?,
+              title: AppStrings.appName,
               onGridTap: () {
                 adminDismissKeyboard();
                 Get.snackbar(
@@ -404,14 +400,12 @@ class _MasterProductsAppBar extends StatelessWidget {
   const _MasterProductsAppBar({
     required this.topPadding,
     required this.title,
-    this.avatarUrl,
     required this.onGridTap,
     required this.onBellTap,
   });
 
   final double topPadding;
   final String title;
-  final String? avatarUrl;
   final VoidCallback onGridTap;
   final VoidCallback onBellTap;
 
@@ -436,11 +430,11 @@ class _MasterProductsAppBar extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: onGridTap,
+                    onPressed: () => Get.back(),
                     icon: Icon(
-                      Icons.grid_view_rounded,
+                      Icons.arrow_back_rounded,
                       color: DesignTokens.figmaPinIconGreen,
-                      size: 20,
+                      size: 24,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -468,44 +462,6 @@ class _MasterProductsAppBar extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _AdminMasterProductsPageState._avatarBg,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: DesignTokens.figmaHeroCtaGreen.withValues(
-                            alpha: 0.1,
-                          ),
-                          spreadRadius: 0,
-                          blurRadius: 0,
-                          offset: Offset.zero,
-                        ),
-                      ],
-                      border: Border.all(
-                        color: DesignTokens.figmaHeroCtaGreen.withValues(
-                          alpha: 0.1,
-                        ),
-                        width: 2,
-                      ),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: avatarUrl != null && avatarUrl!.isNotEmpty
-                        ? Image.network(
-                            avatarUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Icon(
-                              Icons.person_rounded,
-                              color: DesignTokens.figmaLabelMuted,
-                            ),
-                          )
-                        : Icon(
-                            Icons.person_rounded,
-                            color: DesignTokens.figmaLabelMuted,
-                          ),
-                  ),
                 ],
               ),
             ),
@@ -756,35 +712,38 @@ class _SearchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      style: GoogleFonts.inter(
-        fontSize: 16,
-        height: 19 / 16,
-        color: DesignTokens.figmaSectionInk,
-      ),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: _AdminMasterProductsPageState._searchFill,
-        hintText: hint,
-        hintStyle: GoogleFonts.inter(
+    return Material(
+      color: Colors.transparent,
+      child: TextField(
+        controller: controller,
+        style: GoogleFonts.inter(
           fontSize: 16,
-          color: const Color(0xFF6B7280),
+          height: 19 / 16,
+          color: DesignTokens.figmaSectionInk,
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(9999),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.fromLTRB(48, 18, 48, 18),
-        suffixIcon: Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: Icon(
-            Icons.search_rounded,
-            color: _AdminMasterProductsPageState._muted,
-            size: 20,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: _AdminMasterProductsPageState._searchFill,
+          hintText: hint,
+          hintStyle: GoogleFonts.inter(
+            fontSize: 16,
+            color: const Color(0xFF6B7280),
           ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(9999),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(48, 18, 48, 18),
+          suffixIcon: Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Icon(
+              Icons.search_rounded,
+              color: _AdminMasterProductsPageState._muted,
+              size: 20,
+            ),
+          ),
+          suffixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         ),
-        suffixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
       ),
     );
   }

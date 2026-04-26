@@ -1,39 +1,21 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../app/routes/app_routes.dart';
 import '../../../../core/theme/design_tokens.dart';
-import '../../data/admin_listing_submissions_service.dart';
+import '../../../../models/api/admin_api_models.dart';
+import '../../../../services/admin/admin_api_service.dart';
+import '../../../../services/api/api_client.dart';
 
-/// Treats legacy / inconsistent Firestore values as still awaiting review.
-bool _submissionIsPending(Map<String, dynamic> m) {
-  final raw = m['approvalStatus'];
-  if (raw == null) return true;
-  if (raw is! String) return true;
-  final s = raw.trim().toLowerCase();
-  if (s.isEmpty) return true;
-  return s == 'pending';
+bool _submissionIsPending(ListingSubmission s) {
+  final status = s.approvalStatus?.trim().toLowerCase() ?? '';
+  return status.isEmpty || status == 'pending';
 }
 
-String _statusChipLabel(Map<String, dynamic> m) {
-  final raw = m['approvalStatus'];
-  if (raw == null || (raw is String && raw.trim().isEmpty)) return 'pending';
-  if (raw is String) return raw.trim().toLowerCase();
-  return 'pending';
-}
-
-String _formatFirestoreTime(dynamic value) {
-  if (value is Timestamp) {
-    final d = value.toDate().toLocal();
-    final mm = d.month.toString().padLeft(2, '0');
-    final dd = d.day.toString().padLeft(2, '0');
-    final hh = d.hour.toString().padLeft(2, '0');
-    final min = d.minute.toString().padLeft(2, '0');
-    return '${d.year}-$mm-$dd · $hh:$min';
-  }
-  return '—';
+String _statusChipLabel(ListingSubmission s) {
+  final status = s.approvalStatus?.trim().toLowerCase() ?? '';
+  return status.isEmpty ? 'pending' : status;
 }
 
 /// Admin **SPORE** — approve or reject vendor mushroom uploads (`listing_submissions`).
@@ -47,15 +29,47 @@ class AdminVendorListingApprovalsPage extends StatefulWidget {
 
 class _AdminVendorListingApprovalsPageState
     extends State<AdminVendorListingApprovalsPage> {
-  final _svc = AdminListingSubmissionsService();
+  late final AdminApiService _api;
+  List<ListingSubmission> _submissions = [];
+  bool _loading = true;
+  String? _error;
   String? _busyId;
+
+  @override
+  void initState() {
+    super.initState();
+    _api = AdminApiService(Get.find<ApiClient>());
+    _loadSubmissions();
+  }
+
+  Future<void> _loadSubmissions() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final submissions = await _api.listSubmissions();
+      if (!mounted) return;
+      setState(() {
+        _submissions = submissions;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = '$e';
+        _loading = false;
+      });
+    }
+  }
 
   Future<void> _approve(String id) async {
     setState(() => _busyId = id);
     try {
-      await _svc.approve(id);
+      await _api.updateSubmission(id, approvalStatus: 'approved');
       if (!mounted) return;
       Get.snackbar('Approved', 'Listing published to catalog and store inventory.');
+      _loadSubmissions();
     } on Object catch (e) {
       Get.snackbar('Approve failed', '$e');
     } finally {
@@ -84,14 +98,14 @@ class _AdminVendorListingApprovalsPageState
         ],
       ),
     );
-    final reason = ctrl.text.trim();
     ctrl.dispose();
     if (ok != true || !mounted) return;
     setState(() => _busyId = id);
     try {
-      await _svc.reject(submissionId: id, reason: reason);
+      await _api.updateSubmission(id, approvalStatus: 'rejected');
       if (!mounted) return;
       Get.snackbar('Rejected', 'Vendor will see status on their listings.');
+      _loadSubmissions();
     } on Object catch (e) {
       Get.snackbar('Reject failed', '$e');
     } finally {
@@ -163,16 +177,24 @@ class _AdminVendorListingApprovalsPageState
                         ),
                       ),
                       const SizedBox(height: 24),
-                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                        stream: _svc.watchAll(),
-                        builder: (context, snap) {
-                          if (snap.hasError) {
-                            return Text(
-                              'Could not load listing submissions: ${snap.error}',
-                              style: const TextStyle(color: Colors.red),
+                      Builder(
+                        builder: (context) {
+                          if (_error != null) {
+                            return Column(
+                              children: [
+                                Text(
+                                  'Could not load listing submissions: $_error',
+                                  style: const TextStyle(color: Colors.red),
+                                ),
+                                const SizedBox(height: 16),
+                                TextButton(
+                                  onPressed: _loadSubmissions,
+                                  child: const Text('Retry'),
+                                ),
+                              ],
                             );
                           }
-                          if (!snap.hasData) {
+                          if (_loading) {
                             return const Center(
                               child: Padding(
                                 padding: EdgeInsets.all(32),
@@ -180,8 +202,7 @@ class _AdminVendorListingApprovalsPageState
                               ),
                             );
                           }
-                          final docs = snap.data!.docs;
-                          if (docs.isEmpty) {
+                          if (_submissions.isEmpty) {
                             return Padding(
                               padding: const EdgeInsets.only(top: 24),
                               child: Text(
@@ -193,11 +214,11 @@ class _AdminVendorListingApprovalsPageState
                               ),
                             );
                           }
-                          final pending = docs
-                              .where((d) => _submissionIsPending(d.data()))
+                          final pending = _submissions
+                              .where((s) => _submissionIsPending(s))
                               .toList();
-                          final reviewed = docs
-                              .where((d) => !_submissionIsPending(d.data()))
+                          final reviewed = _submissions
+                              .where((s) => !_submissionIsPending(s))
                               .toList();
 
                           return Column(
@@ -225,37 +246,27 @@ class _AdminVendorListingApprovalsPageState
                                   ),
                                 )
                               else
-                                ...pending.map((d) {
-                                  final m = d.data();
-                                  final rupees =
-                                      ((m['priceMinor'] as num?)?.toInt() ?? 0) /
-                                          100;
-                                  final stock =
-                                      (m['stock'] as num?)?.toInt() ?? 0;
+                                ...pending.map((s) {
+                                  final rupees = (s.priceMinor ?? 0) / 100;
+                                  final stock = s.stock ?? 0;
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 16),
                                     child: _SubmissionCard(
-                                      id: d.id,
-                                      title: m['title'] as String? ?? '—',
-                                      varietyLabel:
-                                          m['varietyLabel'] as String? ?? '',
-                                      storeId: m['storeId'] as String? ?? '—',
-                                      submittedByUid:
-                                          m['submittedByUid'] as String? ?? '',
-                                      description:
-                                          m['description'] as String? ?? '',
-                                      imageUrl: m['imageUrl'] as String? ?? '',
-                                      submittedAtLabel: _formatFirestoreTime(
-                                        m['submittedAt'],
-                                      ),
+                                      id: s.id,
+                                      title: s.title,
+                                      varietyLabel: s.varietyLabel ?? '',
+                                      storeId: s.storeId,
+                                      submittedByUid: '',
+                                      description: s.description ?? '',
+                                      imageUrl: '',
+                                      submittedAtLabel: '—',
                                       priceLabel: '₹${rupees.round()}',
                                       stock: stock,
-                                      status: _statusChipLabel(m),
-                                      rejectionReason:
-                                          m['rejectionReason'] as String? ?? '',
-                                      busy: _busyId == d.id,
-                                      onApprove: () => _approve(d.id),
-                                      onReject: () => _rejectDialog(d.id),
+                                      status: _statusChipLabel(s),
+                                      rejectionReason: '',
+                                      busy: _busyId == s.id,
+                                      onApprove: () => _approve(s.id),
+                                      onReject: () => _rejectDialog(s.id),
                                     ),
                                   );
                                 }),
@@ -271,34 +282,24 @@ class _AdminVendorListingApprovalsPageState
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                ...reviewed.map((d) {
-                                  final m = d.data();
-                                  final rupees =
-                                      ((m['priceMinor'] as num?)?.toInt() ?? 0) /
-                                          100;
-                                  final stock =
-                                      (m['stock'] as num?)?.toInt() ?? 0;
+                                ...reviewed.map((s) {
+                                  final rupees = (s.priceMinor ?? 0) / 100;
+                                  final stock = s.stock ?? 0;
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 16),
                                     child: _SubmissionCard(
-                                      id: d.id,
-                                      title: m['title'] as String? ?? '—',
-                                      varietyLabel:
-                                          m['varietyLabel'] as String? ?? '',
-                                      storeId: m['storeId'] as String? ?? '—',
-                                      submittedByUid:
-                                          m['submittedByUid'] as String? ?? '',
-                                      description:
-                                          m['description'] as String? ?? '',
-                                      imageUrl: m['imageUrl'] as String? ?? '',
-                                      submittedAtLabel: _formatFirestoreTime(
-                                        m['submittedAt'],
-                                      ),
+                                      id: s.id,
+                                      title: s.title,
+                                      varietyLabel: s.varietyLabel ?? '',
+                                      storeId: s.storeId,
+                                      submittedByUid: '',
+                                      description: s.description ?? '',
+                                      imageUrl: '',
+                                      submittedAtLabel: '—',
                                       priceLabel: '₹${rupees.round()}',
                                       stock: stock,
-                                      status: _statusChipLabel(m),
-                                      rejectionReason:
-                                          m['rejectionReason'] as String? ?? '',
+                                      status: _statusChipLabel(s),
+                                      rejectionReason: '',
                                       busy: false,
                                       onApprove: null,
                                       onReject: null,

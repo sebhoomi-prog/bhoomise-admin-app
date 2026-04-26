@@ -10,8 +10,9 @@ import '../core/constants/app_constants.dart';
 /// - Default (no `API_BASE_URL`): bundled JSON under `assets/mock_api/` via
 ///   [MockAssetClient], plus SharedPreferences (session) and **Hive** ([LocalStorage])
 ///   for structured offline data (cart) and sync flags.
-/// - `flutter run --dart-define=API_BASE_URL=https://api.example.com/api`:
-///   REST via [ApiClient] / Dio in `*_remote_datasource.dart` only.
+/// - `flutter run --dart-define=API_BASE_URL=https://api.example.com`:
+///   Use the **origin only** (no `/api` suffix). Paths already include `/api/...`.
+///   A value ending in `/api` is normalized at runtime to avoid `/api/api/...` 404s.
 enum BackendType {
   /// SharedPreferences-backed auth, profile, addresses; optional mock fixtures.
   local,

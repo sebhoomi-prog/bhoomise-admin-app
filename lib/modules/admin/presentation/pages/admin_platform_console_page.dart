@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/design_tokens.dart';
-import '../../../../firebase_options.dart';
-import '../../data/admin_metrics_firestore.dart';
+import '../../../../services/api/api_client.dart';
+import '../../data/admin_metrics_api_service.dart';
 
 /// Environment summary and live metric refresh (no downtime controls — informational).
 class AdminPlatformConsolePage extends StatefulWidget {
@@ -31,7 +32,9 @@ class _AdminPlatformConsolePageState extends State<AdminPlatformConsolePage> {
       _err = null;
     });
     try {
-      final m = await AdminMetricsFirestore().fetch();
+      final client = Get.find<ApiClient>();
+      final service = AdminMetricsApiService(client);
+      final m = await service.fetch();
       if (!mounted) return;
       setState(() {
         _snap = m;
@@ -49,7 +52,6 @@ class _AdminPlatformConsolePageState extends State<AdminPlatformConsolePage> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final opts = DefaultFirebaseOptions.currentPlatform;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Platform'),
@@ -70,7 +72,7 @@ class _AdminPlatformConsolePageState extends State<AdminPlatformConsolePage> {
         padding: const EdgeInsets.all(24),
         children: [
           Text(
-            'Firebase project',
+            'API Backend',
             style: GoogleFonts.manrope(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -79,7 +81,7 @@ class _AdminPlatformConsolePageState extends State<AdminPlatformConsolePage> {
           ),
           const SizedBox(height: 8),
           SelectableText(
-            opts.projectId,
+            'Bhoomise PHP API',
             style: GoogleFonts.inter(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -88,8 +90,7 @@ class _AdminPlatformConsolePageState extends State<AdminPlatformConsolePage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Use Firebase Console for indexes, quotas, and App Check. '
-            'This screen only reads operational snapshots.',
+            'This screen displays operational metrics fetched from the REST API.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                   height: 1.4,

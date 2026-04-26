@@ -55,10 +55,10 @@ class AppSessionService extends GetxService {
     _prefs.remove(_kRole);
   }
 
-  /// When restoring a session with no stored role (legacy), default to customer.
-  AppRole get resolvedRoleForNavigation => role.value ?? AppRole.customer;
+  /// Admin app defaults to admin when no role is persisted yet.
+  AppRole get resolvedRoleForNavigation => role.value ?? AppRole.admin;
 
-  AppRole get effectiveRole => _pendingRole ?? role.value ?? AppRole.customer;
+  AppRole get effectiveRole => _pendingRole ?? role.value ?? AppRole.admin;
 
   String? get apiToken => _prefs.getString(_kApiToken);
 
@@ -71,14 +71,6 @@ class AppSessionService extends GetxService {
   }
 
   /// Primary shell route for the persisted or resolved role (post-auth / splash).
-  String get mainShellRouteAfterAuth {
-    switch (resolvedRoleForNavigation) {
-      case AppRole.admin:
-        return AppRoutes.adminSupply;
-      case AppRole.partner:
-        return AppRoutes.partnerShell;
-      case AppRole.customer:
-        return AppRoutes.home;
-    }
-  }
+  /// Admin app always redirects to admin supply dashboard.
+  String get mainShellRouteAfterAuth => AppRoutes.adminSupply;
 }

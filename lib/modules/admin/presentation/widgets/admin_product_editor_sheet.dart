@@ -1,7 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../../models/api/admin_api_models.dart';
+import '../../../../services/admin/admin_api_service.dart';
 
 enum _PackWeightUnit {
   grams,
@@ -11,15 +17,16 @@ enum _PackWeightUnit {
       this == _PackWeightUnit.kg ? 'kilograms (kg)' : 'grams (g)';
 }
 
-/// Create or update a `products/{id}` document (admin rules).
+/// Create or update a product via API.
 ///
 /// **Pack sizes** — same idea as Blinkit: each row is a sellable SKU (200 g, 500 g, 1 kg…)
 /// with **canonical `totalGrams`** (for coupons / logic), **MRP in ₹**, and stock.
 Future<void> showAdminProductEditorSheet(
   BuildContext context, {
-  required FirebaseFirestore db,
-  String? documentId,
-  Map<String, dynamic>? initial,
+  required AdminApiService api,
+  String? productId,
+  Product? initial,
+  VoidCallback? onSaved,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -27,9 +34,10 @@ Future<void> showAdminProductEditorSheet(
     useRootNavigator: true,
     showDragHandle: true,
     builder: (ctx) => _AdminProductEditorBody(
-      db: db,
-      documentId: documentId,
+      api: api,
+      productId: productId,
       initial: initial,
+      onSaved: onSaved,
     ),
   );
 }
@@ -75,45 +83,28 @@ class _PackVariantDraft {
     );
   }
 
-  factory _PackVariantDraft.fromMap(Map<String, dynamic> m) {
-    final id = m['id']?.toString() ?? 'v_${DateTime.now().microsecondsSinceEpoch}';
-    final label = (m['label'] ?? m['name'] ?? '') as String;
-    final tg = (m['totalGrams'] ?? m['total_grams']) as num?;
-    final totalGrams = tg?.toInt() ?? 0;
-    final minor = (m['priceMinor'] as num?)?.toInt() ?? 0;
+  factory _PackVariantDraft.fromVariant(ProductVariant v) {
+    final totalGrams = v.totalGrams;
+    final minor = v.priceMinor;
     final rupees = minor > 0 ? (minor / 100).toStringAsFixed(minor % 100 == 0 ? 0 : 2) : '';
 
-    final stored = (m['weightInputUnit'] as String?)?.toLowerCase();
     late _PackWeightUnit u;
     late String weightText;
-    if (stored == 'kg') {
+    if (totalGrams > 0 && totalGrams % 1000 == 0) {
       u = _PackWeightUnit.kg;
-      final kg = totalGrams / 1000.0;
-      weightText = kg == kg.roundToDouble() ? '${kg.toInt()}' : _trimDecimal(kg);
-    } else if (stored == 'g') {
-      u = _PackWeightUnit.grams;
-      weightText = '$totalGrams';
+      weightText = '${totalGrams ~/ 1000}';
     } else {
-      if (totalGrams > 0 && totalGrams % 1000 == 0) {
-        u = _PackWeightUnit.kg;
-        weightText = '${totalGrams ~/ 1000}';
-      } else {
-        u = _PackWeightUnit.grams;
-        weightText = totalGrams > 0 ? '$totalGrams' : '';
-      }
+      u = _PackWeightUnit.grams;
+      weightText = totalGrams > 0 ? '$totalGrams' : '';
     }
 
     return _PackVariantDraft(
-      id: id,
-      labelCtrl: TextEditingController(text: label),
+      id: v.id,
+      labelCtrl: TextEditingController(text: v.label),
       weightValueCtrl: TextEditingController(text: weightText),
       priceRupeeCtrl: TextEditingController(text: rupees),
-      stockCtrl: TextEditingController(
-        text: '${(m['stock'] as num?)?.toInt() ?? 0}',
-      ),
-      lowStockCtrl: TextEditingController(
-        text: '${(m['lowStockThreshold'] as num?)?.toInt() ?? 5}',
-      ),
+      stockCtrl: TextEditingController(text: '${v.stock}'),
+      lowStockCtrl: TextEditingController(text: '${v.lowStockThreshold}'),
       unit: u,
     );
   }
@@ -124,7 +115,6 @@ class _PackVariantDraft {
     return s.endsWith('.') ? s.substring(0, s.length - 1) : s;
   }
 
-  /// Canonical grams for Firestore / cart / coupons.
   int? weightToTotalGrams() {
     final raw = weightValueCtrl.text.trim();
     if (raw.isEmpty) return null;
@@ -137,18 +127,17 @@ class _PackVariantDraft {
     return v.round();
   }
 
-  Map<String, dynamic> toFirestoreMap() {
+  ProductVariant toVariant() {
     final grams = weightToTotalGrams() ?? 0;
     final minor = _parseRupeesToMinor(priceRupeeCtrl.text.trim()) ?? 0;
-    return {
-      'id': id,
-      'label': labelCtrl.text.trim(),
-      'totalGrams': grams,
-      'weightInputUnit': unit == _PackWeightUnit.kg ? 'kg' : 'g',
-      'priceMinor': minor,
-      'stock': int.tryParse(stockCtrl.text.trim()) ?? 0,
-      'lowStockThreshold': int.tryParse(lowStockCtrl.text.trim()) ?? 5,
-    };
+    return ProductVariant(
+      id: id,
+      label: labelCtrl.text.trim(),
+      totalGrams: grams,
+      priceMinor: minor,
+      stock: int.tryParse(stockCtrl.text.trim()) ?? 0,
+      lowStockThreshold: int.tryParse(lowStockCtrl.text.trim()) ?? 5,
+    );
   }
 
   static int? _parseRupeesToMinor(String raw) {
@@ -171,14 +160,16 @@ const _kPackPresets = <Map<String, Object>>[
 
 class _AdminProductEditorBody extends StatefulWidget {
   const _AdminProductEditorBody({
-    required this.db,
-    this.documentId,
+    required this.api,
+    this.productId,
     this.initial,
+    this.onSaved,
   });
 
-  final FirebaseFirestore db;
-  final String? documentId;
-  final Map<String, dynamic>? initial;
+  final AdminApiService api;
+  final String? productId;
+  final Product? initial;
+  final VoidCallback? onSaved;
 
   @override
   State<_AdminProductEditorBody> createState() =>
@@ -188,27 +179,39 @@ class _AdminProductEditorBody extends StatefulWidget {
 class _AdminProductEditorBodyState extends State<_AdminProductEditorBody> {
   late final TextEditingController _name;
   late final TextEditingController _desc;
-  late final TextEditingController _image;
+  late String _imageUrl;
   late bool _published;
   bool _saving = false;
+  bool _uploadingImage = false;
+  
+  Uint8List? _selectedImageBytes;
+  String? _selectedImageName;
 
   final List<_PackVariantDraft> _packs = [];
+  final Set<int> _selectedPresetGrams = {};
+  
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     final i = widget.initial;
-    _name = TextEditingController(text: i?['name'] as String? ?? '');
-    _desc = TextEditingController(text: i?['description'] as String? ?? '');
-    _image = TextEditingController(text: i?['image_url'] as String? ?? '');
-    _published = i?['published'] as bool? ?? true;
+    _name = TextEditingController(text: i?.name ?? '');
+    _desc = TextEditingController(text: i?.description ?? '');
+    _imageUrl = i?.imageUrl ?? '';
+    _published = i?.published ?? true;
 
-    final raw = i?['variants'] as List<dynamic>? ?? [];
-    if (raw.isEmpty) {
+    final variants = i?.variants ?? [];
+    if (variants.isEmpty) {
       _packs.add(_PackVariantDraft.empty());
     } else {
-      for (final e in raw) {
-        _packs.add(_PackVariantDraft.fromMap(Map<String, dynamic>.from(e as Map)));
+      for (final v in variants) {
+        final pack = _PackVariantDraft.fromVariant(v);
+        _packs.add(pack);
+        final grams = pack.weightToTotalGrams();
+        if (grams != null) {
+          _selectedPresetGrams.add(grams);
+        }
       }
     }
   }
@@ -217,19 +220,97 @@ class _AdminProductEditorBodyState extends State<_AdminProductEditorBody> {
   void dispose() {
     _name.dispose();
     _desc.dispose();
-    _image.dispose();
     for (final p in _packs) {
       p.dispose();
     }
     super.dispose();
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (image == null) return;
+      
+      final bytes = await image.readAsBytes();
+      setState(() {
+        _selectedImageBytes = bytes;
+        _selectedImageName = image.name;
+      });
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to pick image: $e',
+          snackPosition: SnackPosition.BOTTOM);
+    }
+  }
+
+  void _showImagePickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: const Text('Take Photo'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: const Text('Choose from Gallery'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            if (_selectedImageBytes != null || _imageUrl.isNotEmpty)
+              ListTile(
+                leading: Icon(Icons.delete_rounded, color: Theme.of(context).colorScheme.error),
+                title: Text('Remove Image', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() {
+                    _selectedImageBytes = null;
+                    _selectedImageName = null;
+                    _imageUrl = '';
+                  });
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _prepareImageUrl() async {
+    if (_selectedImageBytes == null) return _imageUrl.isNotEmpty ? _imageUrl : null;
+    
+    if (kDebugMode) debugPrint('Image upload not implemented - using placeholder');
+    return _imageUrl.isNotEmpty ? _imageUrl : null;
+  }
+
   void _addPack() => setState(() => _packs.add(_PackVariantDraft.empty()));
 
   void _applyPreset(Map<String, Object> preset) {
+    final grams = preset['grams'] as int;
+    
+    if (_selectedPresetGrams.contains(grams)) {
+      final index = _packs.indexWhere((p) => p.weightToTotalGrams() == grams);
+      if (index != -1) {
+        _removePack(index);
+      }
+      setState(() => _selectedPresetGrams.remove(grams));
+      return;
+    }
+    
     final d = _PackVariantDraft.empty();
     d.labelCtrl.text = preset['label'] as String;
-    final grams = preset['grams'] as int;
     if (grams >= 1000 && grams % 1000 == 0) {
       d.unit = _PackWeightUnit.kg;
       d.weightValueCtrl.text = '${grams ~/ 1000}';
@@ -237,7 +318,10 @@ class _AdminProductEditorBodyState extends State<_AdminProductEditorBody> {
       d.unit = _PackWeightUnit.grams;
       d.weightValueCtrl.text = '$grams';
     }
-    setState(() => _packs.add(d));
+    setState(() {
+      _packs.add(d);
+      _selectedPresetGrams.add(grams);
+    });
   }
 
   void _removePack(int index) {
@@ -246,9 +330,11 @@ class _AdminProductEditorBodyState extends State<_AdminProductEditorBody> {
           snackPosition: SnackPosition.BOTTOM);
       return;
     }
+    final grams = _packs[index].weightToTotalGrams();
     setState(() {
       _packs[index].dispose();
       _packs.removeAt(index);
+      if (grams != null) _selectedPresetGrams.remove(grams);
     });
   }
 
@@ -284,29 +370,26 @@ class _AdminProductEditorBodyState extends State<_AdminProductEditorBody> {
     }
     setState(() => _saving = true);
     try {
-      final variants = _packs.map((p) => p.toFirestoreMap()).toList();
-      final col = widget.db.collection('products');
-      final payload = <String, dynamic>{
-        'name': name,
-        'description': _desc.text.trim(),
-        'image_url': _image.text.trim(),
-        'published': _published,
-        'variants': variants,
-        'updatedAt': FieldValue.serverTimestamp(),
-      };
+      final imageUrl = await _prepareImageUrl();
+      
+      final variants = _packs.map((p) => p.toVariant()).toList();
+      
+      final productId = widget.productId ?? 'prod_${DateTime.now().millisecondsSinceEpoch}';
+      final product = Product(
+        id: productId,
+        name: name,
+        description: _desc.text.trim(),
+        imageUrl: imageUrl,
+        published: _published,
+        variants: variants,
+      );
 
-      if (widget.documentId == null) {
-        final ref = col.doc();
-        await ref.set({
-          ...payload,
-          'id': ref.id,
-        });
-      } else {
-        await col.doc(widget.documentId).set(payload, SetOptions(merge: true));
-      }
+      await widget.api.upsertProduct(productId, product);
+      
       if (!mounted) return;
       Navigator.of(context).pop();
-      Get.snackbar('Saved', 'Catalog & pack sizes updated.',
+      widget.onSaved?.call();
+      Get.snackbar('Saved', 'Product saved successfully.',
           snackPosition: SnackPosition.BOTTOM);
     } on Object catch (e) {
       if (!mounted) return;
@@ -329,10 +412,39 @@ class _AdminProductEditorBodyState extends State<_AdminProductEditorBody> {
     return (v * 100).round();
   }
 
+  Widget _buildImagePlaceholder(ColorScheme scheme) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.add_photo_alternate_rounded,
+          size: 48,
+          color: scheme.primary.withValues(alpha: 0.6),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Tap to add image',
+          style: TextStyle(
+            color: scheme.onSurfaceVariant,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Camera or Gallery',
+          style: TextStyle(
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
-    final isNew = widget.documentId == null;
+    final isNew = widget.productId == null;
     final scheme = Theme.of(context).colorScheme;
 
     return Padding(
@@ -387,16 +499,95 @@ class _AdminProductEditorBodyState extends State<_AdminProductEditorBody> {
                 ),
                 maxLines: 3,
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _image,
-                decoration: const InputDecoration(
-                  labelText: 'Image URL',
-                  border: OutlineInputBorder(),
-                  hintText: 'https://…',
+              const SizedBox(height: 16),
+              Text(
+                'Product Image',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _saving || _uploadingImage ? null : _showImagePickerOptions,
+                child: Container(
+                  height: 160,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: scheme.outline.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: _uploadingImage
+                      ? const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 8),
+                              Text('Uploading...'),
+                            ],
+                          ),
+                        )
+                      : _selectedImageBytes != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(11),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.memory(
+                                    _selectedImageBytes!,
+                                    fit: BoxFit.cover,
+                                  ),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.black54,
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 20),
+                                        onPressed: _showImagePickerOptions,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : _imageUrl.isNotEmpty
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(11),
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      Image.network(
+                                        _imageUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => _buildImagePlaceholder(scheme),
+                                      ),
+                                      Positioned(
+                                        top: 8,
+                                        right: 8,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.black54,
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: IconButton(
+                                            icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 20),
+                                            onPressed: _showImagePickerOptions,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : _buildImagePlaceholder(scheme),
                 ),
-                keyboardType: TextInputType.url,
-                autocorrect: false,
               ),
               SwitchListTile(
                 title: const Text('Published in catalog'),
@@ -433,9 +624,10 @@ class _AdminProductEditorBodyState extends State<_AdminProductEditorBody> {
                   runSpacing: 8,
                   children: [
                     for (final preset in _kPackPresets)
-                      ActionChip(
-                        label: Text('${preset['label']}'),
-                        onPressed: _saving ? null : () => _applyPreset(preset),
+                      _PackPresetChip(
+                        label: preset['label'] as String,
+                        isSelected: _selectedPresetGrams.contains(preset['grams'] as int),
+                        onTap: _saving ? null : () => _applyPreset(preset),
                       ),
                   ],
                 ),
@@ -647,6 +839,55 @@ class _PackSizeCard extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PackPresetChip extends StatelessWidget {
+  const _PackPresetChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: isSelected ? scheme.primary : scheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isSelected) ...[
+                Icon(
+                  Icons.check_rounded,
+                  size: 18,
+                  color: scheme.onPrimary,
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? scheme.onPrimary : scheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),

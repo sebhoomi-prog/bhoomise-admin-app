@@ -47,9 +47,9 @@ class _SplashPageState extends State<SplashPage> {
         return;
       }
 
-      // Guest-first (see `.cursor/config/project-config`): browse without login; OTP at checkout.
+      // Admin app requires login - redirect to login page if not authenticated.
       if (!loggedIn) {
-        Get.offAllNamed(AppRoutes.home);
+        Get.offAllNamed(AppRoutes.login);
         return;
       }
       final uid = auth.currentUser.value!.uid;

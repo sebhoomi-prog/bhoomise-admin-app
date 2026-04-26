@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../core/constants/app_strings.dart';
 import '../../../../../core/theme/figma_typography.dart';
@@ -30,11 +29,8 @@ class _PlayIntegrityLoginNoticeState extends State<PlayIntegrityLoginNotice> {
     _openDocs = TapGestureRecognizer()..onTap = _launchOverview;
   }
 
-  Future<void> _launchOverview() async {
-    final uri = AppStrings.playIntegrityOverviewUri;
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+  void _launchOverview() {
+    debugPrint('Play Integrity overview: ${AppStrings.playIntegrityOverviewUri}');
   }
 
   @override

@@ -2,7 +2,7 @@
 class AppStrings {
   AppStrings._();
 
-  static const appName = 'Bhoomise';
+  static const appName = 'bAdmin';
   static const tagline = 'Smart agri-commerce & inventory';
 
   /// Bottom nav — matches Figma customer shell.

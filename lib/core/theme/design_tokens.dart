@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../design/figma_storefront.dart' show kFigmaBhoomiseFileKey;
-
 /// Bhoomise Agri-Tech UI — customer surfaces from Figma **Customer Home** (file `kWtQ8RReUVoZ7BoABTOe3q`, node `9:3`).
 abstract final class DesignTokens {
   /// Figma file key for design reference (not a runtime dependency).
-  static const String figmaCustomerHomeFileKey = kFigmaBhoomiseFileKey;
+  static const String figmaCustomerHomeFileKey = 'kWtQ8RReUVoZ7BoABTOe3q';
 
   /// Phone login / multi-role — Dev Mode frame [`9:675`](https://www.figma.com/design/kWtQ8RReUVoZ7BoABTOe3q/Bhoomise?node-id=9-675&m=dev).
   static const String figmaLoginFrameNodeId = '9:675';

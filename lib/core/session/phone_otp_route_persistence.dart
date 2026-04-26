@@ -38,7 +38,7 @@ class PhoneOtpRoutePersistence {
     return <String, dynamic>{
       'phoneE164': prefs.getString(_kPhone)!,
       'intent': prefs.getString(_kIntent) ?? 'login',
-      'role': prefs.getString(_kRole) ?? 'customer',
+      'role': prefs.getString(_kRole) ?? 'admin',
     };
   }
 }

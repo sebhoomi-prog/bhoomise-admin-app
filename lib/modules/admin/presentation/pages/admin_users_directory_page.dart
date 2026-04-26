@@ -1,10 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../services/admin/admin_api_service.dart';
+import '../../../../services/api/api_client.dart';
 
-/// Lists Firestore `users` profiles (admin read). Counts are capped snapshots, not global totals.
+/// Lists users via REST API (admin read).
 class AdminUsersDirectoryPage extends StatefulWidget {
   const AdminUsersDirectoryPage({super.key});
 
@@ -14,8 +16,6 @@ class AdminUsersDirectoryPage extends StatefulWidget {
 }
 
 class _AdminUsersDirectoryPageState extends State<AdminUsersDirectoryPage> {
-  static const _limit = 200;
-
   bool _loading = true;
   Object? _error;
   List<_UserRow> _rows = const [];
@@ -34,32 +34,25 @@ class _AdminUsersDirectoryPageState extends State<AdminUsersDirectoryPage> {
       _error = null;
     });
     try {
-      final snap = await FirebaseFirestore.instance
-          .collection('users')
-          .limit(_limit)
-          .get();
+      final api = AdminApiService(Get.find<ApiClient>());
+      final users = await api.listUsers();
       var p = 0;
       var c = 0;
       final rows = <_UserRow>[];
-      for (final d in snap.docs) {
-        final m = d.data();
-        final role = (m['role'] as String?)?.trim() ?? '';
+      for (final u in users) {
+        final role = u.role?.trim() ?? '';
         final rl = role.toLowerCase();
-        if (rl == 'partner' || rl == 'vendor' || rl == 'store') {
+        if (rl == 'partner' || rl == 'vendor' || rl == 'store' || rl == 'admin') {
           p++;
         } else {
           c++;
         }
-        final name = (m['displayName'] as String?)?.trim().isNotEmpty == true
-            ? m['displayName'] as String
-            : (m['name'] as String?)?.trim();
-        final phone = (m['phoneNumber'] as String?)?.trim();
         rows.add(
           _UserRow(
-            uid: d.id,
-            displayName: name,
+            uid: '${u.id}',
+            displayName: u.name,
             role: role.isEmpty ? '—' : role,
-            phoneHint: phone,
+            phoneHint: u.phone,
           ),
         );
       }
@@ -128,8 +121,7 @@ class _AdminUsersDirectoryPageState extends State<AdminUsersDirectoryPage> {
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                     children: [
                       Text(
-                        'Snapshot: up to $_limit profiles from users/. '
-                        'Deploy Firestore rules so admins can read all user docs.',
+                        'User profiles loaded from REST API.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),

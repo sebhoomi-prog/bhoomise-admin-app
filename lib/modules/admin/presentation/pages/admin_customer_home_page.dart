@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/api/api_client.dart';
 import '../../../../core/theme/design_tokens.dart';
-import '../../data/customer_home_tile_image_upload.dart';
 import '../../../customer/home/data/customer_home_defaults.dart';
-import '../../../customer/home/data/customer_home_firestore_datasource.dart';
+import '../../../customer/home/data/customer_home_api_datasource.dart';
 import '../../../customer/home/domain/customer_home_category.dart';
 
-/// Admin editor for customer home 2×2 tiles — persists to Firestore `app/customer_home`.
+/// Admin editor for customer home 2×2 tiles — persists via REST API.
 ///
-/// Images: upload from gallery/camera (Firebase Storage) or paste Unsplash / Storage URL.
+/// Images: paste Unsplash / CDN URLs (local upload disabled).
 class AdminCustomerHomePage extends StatefulWidget {
   const AdminCustomerHomePage({super.key});
 
@@ -64,16 +64,23 @@ class _RowCtr {
 }
 
 class _AdminCustomerHomePageState extends State<AdminCustomerHomePage> {
-  final _ds = Get.find<CustomerHomeFirestoreDataSource>();
+  late final CustomerHomeApiDataSource _ds;
 
   List<_RowCtr> _rows = [];
   bool _loading = true;
   bool _saving = false;
   String? _loadError;
 
+  static bool _isAllowedTileImageUrl(String url) {
+    final u = url.toLowerCase();
+    return u.startsWith('https://images.unsplash.com/') ||
+        u.startsWith('https://') && (u.contains('.cdn.') || u.contains('/images/'));
+  }
+
   @override
   void initState() {
     super.initState();
+    _ds = CustomerHomeApiDataSource(Get.find<ApiClient>());
     _load();
   }
 
@@ -113,12 +120,10 @@ class _AdminCustomerHomePageState extends State<AdminCustomerHomePage> {
         );
         return;
       }
-      if (!CustomerHomeFirestoreDataSource.isAllowedTileImageUrl(c.imageUrl)) {
+      if (!_isAllowedTileImageUrl(c.imageUrl)) {
         Get.snackbar(
           'Invalid image URL',
-          'Use an upload from this screen, or paste Unsplash '
-          '${CustomerHomeFirestoreDataSource.unsplashImagesHostPrefix}… '
-          'or a firebase storage download link.',
+          'Paste a valid image URL (https://images.unsplash.com/... or CDN link).',
           snackPosition: SnackPosition.BOTTOM,
           duration: const Duration(seconds: 8),
         );
@@ -242,11 +247,10 @@ class _AdminCustomerHomePageState extends State<AdminCustomerHomePage> {
                       ),
                     ),
                   Text(
-                    'Stored at app/${CustomerHomeFirestoreDataSource.docId}. '
+                    'Stored via REST API. '
                     'Customers see updates immediately. '
-                    'Use Upload from gallery / Take photo (saved to Firebase Storage), '
-                    'or paste an Unsplash image URL '
-                    '(${CustomerHomeFirestoreDataSource.unsplashImagesHostPrefix}…).',
+                    'Paste an Unsplash image URL (https://images.unsplash.com/…) '
+                    'or other CDN-hosted image.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                           height: 1.45,
@@ -299,43 +303,12 @@ class _TileEditorCardState extends State<_TileEditorCard> {
   bool _uploading = false;
 
   Future<void> _pickAndUpload(ImageSource source) async {
-    final picker = ImagePicker();
-    final x = await picker.pickImage(
-      source: source,
-      maxWidth: 2048,
-      maxHeight: 2048,
-      imageQuality: 85,
+    Get.snackbar(
+      'Image upload disabled',
+      'Please paste a valid image URL (e.g., https://images.unsplash.com/...).',
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 4),
     );
-    if (x == null || !mounted) return;
-    setState(() => _uploading = true);
-    try {
-      final bytes = await x.readAsBytes();
-      final mime = x.mimeType;
-      final uploader = CustomerHomeTileImageUploader();
-      final url = await uploader.uploadTileImage(
-        bytes: bytes,
-        mimeTypeHint: mime ?? 'image/jpeg',
-        tileIndex: widget.index,
-      );
-      widget.ctr.imageUrl.text = url;
-      if (mounted) setState(() {});
-      Get.snackbar(
-        'Image uploaded',
-        'URL filled in — tap Save to publish.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } on Object catch (e) {
-      if (mounted) {
-        Get.snackbar(
-          'Upload failed',
-          '$e',
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 6),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _uploading = false);
-    }
   }
 
   String _previewUrl() => widget.ctr.imageUrl.text.trim();
@@ -519,16 +492,14 @@ class _TileEditorCardState extends State<_TileEditorCard> {
             const SizedBox(height: DesignTokens.spaceSm),
             TextField(
               controller: widget.ctr.imageUrl,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Image URL',
-                hintText:
-                    '${CustomerHomeFirestoreDataSource.unsplashImagesHostPrefix}… '
-                    'or Firebase Storage link after upload',
+                hintText: 'https://images.unsplash.com/… or CDN link',
                 helperText:
-                    'Paste Unsplash / Storage URL, or use Gallery / Camera above.',
+                    'Paste Unsplash or other CDN-hosted image URL.',
                 helperMaxLines: 2,
                 alignLabelWithHint: true,
-                prefixIcon: const Icon(Icons.link_rounded),
+                prefixIcon: Icon(Icons.link_rounded),
               ),
               keyboardType: TextInputType.url,
               autocorrect: false,

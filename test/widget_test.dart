@@ -9,6 +9,6 @@ void main() {
   });
 
   test('AppStrings app name is stable', () {
-    expect(AppStrings.appName, 'Bhoomise');
+    expect(AppStrings.appName, 'bAdmin');
   });
 }

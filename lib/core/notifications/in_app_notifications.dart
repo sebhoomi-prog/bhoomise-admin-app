@@ -1,75 +1,57 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+/// Notification model for in-app notifications.
+class InAppNotification {
+  const InAppNotification({
+    required this.id,
+    required this.recipientUid,
+    required this.title,
+    required this.body,
+    this.kind,
+    this.relatedId,
+    this.createdAt,
+  });
 
-/// Firestore-backed inbox for admins and users. Real-time in app; pair with FCM + Cloud Functions for push.
-///
-/// [adminBroadcastRecipient] targets every signed-in admin reading the admin feed.
+  final String id;
+  final String recipientUid;
+  final String title;
+  final String body;
+  final String? kind;
+  final String? relatedId;
+  final DateTime? createdAt;
+}
+
+/// Stub implementation for in-app notifications.
+/// Currently returns empty streams as notifications are not implemented via API yet.
 class InAppNotifications {
-  InAppNotifications([FirebaseFirestore? db])
-      : _db = db ?? FirebaseFirestore.instance;
-
-  final FirebaseFirestore _db;
+  InAppNotifications();
 
   static const collection = 'notifications';
   static const adminBroadcastRecipient = 'ADMIN_BROADCAST';
 
-  CollectionReference<Map<String, dynamic>> get _col =>
-      _db.collection(collection);
-
-  /// Vendor submitted a listing — all admins see this in their profile feed.
   Future<void> notifyAdminsNewListing({
     required String submissionId,
     required String title,
     required String storeId,
   }) async {
-    await _col.add({
-      'recipientUid': adminBroadcastRecipient,
-      'title': 'New vendor listing',
-      'body': '"$title" · store $storeId — review in SPORE.',
-      'kind': 'vendor_listing_submitted',
-      'relatedId': submissionId,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    // TODO: Implement via API when notification endpoint is available
   }
 
-  /// Listing approved or rejected — notify submitting vendor by Firebase Auth uid.
   Future<void> notifyVendorListingDecision({
     required String vendorUid,
     required String submissionId,
     required bool approved,
     String? rejectionReason,
   }) async {
-    await _col.add({
-      'recipientUid': vendorUid,
-      'title': approved ? 'Listing approved' : 'Listing rejected',
-      'body': approved
-          ? 'Your product was published to the catalog.'
-          : (rejectionReason != null && rejectionReason.trim().isNotEmpty
-              ? rejectionReason.trim()
-              : 'Your submission was not approved. Open Partner → SPORE for details.'),
-      'kind': approved ? 'listing_approved' : 'listing_rejected',
-      'relatedId': submissionId,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    // TODO: Implement via API when notification endpoint is available
   }
 
-  /// Admin feed (broadcast).
-  Stream<QuerySnapshot<Map<String, dynamic>>> watchAdminFeed({int limit = 40}) {
-    return _col
-        .where('recipientUid', isEqualTo: adminBroadcastRecipient)
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .snapshots();
+  Stream<List<InAppNotification>> watchAdminFeed({int limit = 40}) {
+    return Stream.value([]);
   }
 
-  /// Messages to the signed-in user (vendor/customer).
-  Stream<QuerySnapshot<Map<String, dynamic>>> watchForUser(
+  Stream<List<InAppNotification>> watchForUser(
     String uid, {
     int limit = 30,
   }) {
-    return _col
-        .where('recipientUid', isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .snapshots();
+    return Stream.value([]);
   }
 }

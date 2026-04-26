@@ -1,13 +1,15 @@
-import 'dart:convert';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/design_tokens.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../features/auth/presentation/controllers/auth_controller.dart';
+import '../../../../models/api/admin_api_models.dart';
+import '../../../../services/admin/admin_api_service.dart';
+import '../../../../services/api/api_client.dart';
 import '../widgets/admin_keyboard.dart';
 
 abstract final class _AdminStockTokens {
@@ -22,15 +24,72 @@ abstract final class _AdminStockTokens {
   static const line = Color(0xFFE5E7EB);
 }
 
-class GlobalSupplyPage extends StatelessWidget {
+class GlobalSupplyPage extends StatefulWidget {
   const GlobalSupplyPage({super.key});
 
-  Future<Map<String, dynamic>> _load() async {
-    final raw = await rootBundle.loadString(
-      'assets/mock_api/admin/global_supply_dashboard.json',
-    );
-    final m = jsonDecode(raw) as Map<String, dynamic>;
-    return m['data'] as Map<String, dynamic>? ?? {};
+  @override
+  State<GlobalSupplyPage> createState() => _GlobalSupplyPageState();
+}
+
+class _GlobalSupplyPageState extends State<GlobalSupplyPage> {
+  late final AdminApiService _api;
+  List<Store> _stores = [];
+  List<Product> _products = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _api = AdminApiService(Get.find<ApiClient>());
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final stores = await _api.listStores();
+      final products = await _api.listProducts();
+      if (!mounted) return;
+      setState(() {
+        _stores = stores;
+        _products = products;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = '$e';
+        _loading = false;
+      });
+    }
+  }
+
+  int get _totalStock {
+    var total = 0;
+    for (final p in _products) {
+      for (final v in p.variants) {
+        total += v.stock;
+      }
+    }
+    return total;
+  }
+
+  Product? get _lowStockProduct {
+    Product? lowest;
+    int lowestStock = 999999;
+    for (final p in _products) {
+      for (final v in p.variants) {
+        if (v.stock < lowestStock && v.stock > 0) {
+          lowestStock = v.stock;
+          lowest = p;
+        }
+      }
+    }
+    return lowest;
   }
 
   @override
@@ -38,22 +97,29 @@ class GlobalSupplyPage extends StatelessWidget {
     final top = MediaQuery.paddingOf(context).top;
     return Scaffold(
       backgroundColor: _AdminStockTokens.bg,
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _load(),
-        builder: (context, snap) {
-          if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final d = snap.data!;
-          final partners = (d['partners'] as List<dynamic>? ?? [])
-              .whereType<Map<String, dynamic>>()
-              .toList();
-
-          return Stack(
-            children: [
-              AdminTapOutsideUnfocus(
+      body: Stack(
+        children: [
+          if (_loading)
+            const Center(child: CircularProgressIndicator())
+          else if (_error != null)
+            ErrorStateWidget(
+              message: _error!,
+              onRetry: _loadData,
+            )
+          else if (_stores.isEmpty && _products.isEmpty)
+            const EmptyStateWidget(
+              title: 'No Data Available',
+              message: 'Stock and inventory data will appear here once stores and products are added.',
+              icon: Icons.inventory_2_outlined,
+            )
+          else
+            AdminTapOutsideUnfocus(
+              child: RefreshIndicator(
+                onRefresh: _loadData,
                 child: CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
                   slivers: [
                     SliverPadding(
                       padding: EdgeInsets.fromLTRB(
@@ -96,15 +162,19 @@ class GlobalSupplyPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          _TopStatsCard(data: d),
-                          const SizedBox(height: 12),
-                          _HeroSkuCard(
-                            title: 'Lion\'s Mane (500g)',
-                            subtitle: 'Predicted shortage: 48h',
+                          _TopStatsCard(
+                            activeCenters: _stores.where((s) => s.active).length,
+                            totalStock: _totalStock,
                           ),
+                          const SizedBox(height: 12),
+                          if (_lowStockProduct != null)
+                            _HeroSkuCard(
+                              title: _lowStockProduct!.name,
+                              subtitle: 'Low stock alert',
+                            ),
                           const SizedBox(height: 16),
                           Text(
-                            'Vendor Breakdown',
+                            'Store Breakdown',
                             style: GoogleFonts.manrope(
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
@@ -112,48 +182,53 @@ class GlobalSupplyPage extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          if (partners.isEmpty)
+                          if (_stores.isEmpty)
                             _EmptyHintCard(
-                              text:
-                                  'No partner signals yet. Vendor breakdown appears when admin data sync completes.',
+                              text: 'No stores registered yet. Store breakdown appears when stores are added.',
                             )
                           else ...[
-                            _VendorCard(partner: partners.first),
-                            const SizedBox(height: 10),
-                            for (var i = 1; i < partners.length; i++) ...[
-                              _VendorMiniCard(partner: partners[i]),
+                            for (final store in _stores) ...[
+                              _StoreCard(store: store),
                               const SizedBox(height: 10),
                             ],
                           ],
-                          _SoftSummaryCard(
-                            title: 'Fast Delivery',
-                            value: '92 Units Total',
-                            subtitle: '10+ km range',
+                          const SizedBox(height: 6),
+                          Text(
+                            'Products Summary',
+                            style: GoogleFonts.manrope(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: _AdminStockTokens.ink,
+                            ),
                           ),
                           const SizedBox(height: 10),
-                          _SoftSummaryCard(
-                            title: 'Good Summary',
-                            value: '48 Units Total',
-                            subtitle: 'Low risk zones',
-                          ),
+                          if (_products.isEmpty)
+                            _EmptyHintCard(
+                              text: 'No products in catalog yet.',
+                            )
+                          else
+                            _SoftSummaryCard(
+                              title: 'Total Products',
+                              value: '${_products.length} SKUs',
+                              subtitle: '${_products.where((p) => p.published).length} published',
+                            ),
                         ]),
                       ),
                     ),
                   ],
                 ),
               ),
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: _FrostHeader(
-                  topPadding: top,
-                  onSignOut: () => Get.find<AuthController>().signOutUser(),
-                ),
-              ),
-            ],
-          );
-        },
+            ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _FrostHeader(
+              topPadding: top,
+              onSignOut: () => Get.find<AuthController>().signOutUser(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -217,11 +292,6 @@ class _FrostHeader extends StatelessWidget {
                   color: _AdminStockTokens.muted,
                   tooltip: 'Sign out',
                 ),
-                const CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Color(0xFFE5E7EB),
-                  child: Icon(Icons.person_rounded, size: 18, color: _AdminStockTokens.ink),
-                ),
               ],
             ),
           ),
@@ -232,13 +302,17 @@ class _FrostHeader extends StatelessWidget {
 }
 
 class _TopStatsCard extends StatelessWidget {
-  const _TopStatsCard({required this.data});
-  final Map<String, dynamic> data;
+  const _TopStatsCard({
+    required this.activeCenters,
+    required this.totalStock,
+  });
+  
+  final int activeCenters;
+  final int totalStock;
 
   @override
   Widget build(BuildContext context) {
-    final activeCenters =
-        (data['network_health_value'] as String?)?.replaceAll(RegExp('[^0-9]'), '');
+    final stockKg = (totalStock / 1000).toStringAsFixed(1);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -252,7 +326,7 @@ class _TopStatsCard extends StatelessWidget {
               const Icon(Icons.eco_rounded, color: _AdminStockTokens.green, size: 18),
               const SizedBox(width: 8),
               Text(
-                'ACTIVE WAREHOUSES',
+                'ACTIVE STORES',
                 style: GoogleFonts.inter(
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
@@ -266,7 +340,7 @@ class _TopStatsCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              '${activeCenters?.isEmpty ?? true ? 12 : activeCenters} Centers',
+              '$activeCenters ${activeCenters == 1 ? 'Store' : 'Stores'}',
               style: GoogleFonts.manrope(
                 fontSize: 34,
                 height: 38 / 34,
@@ -277,10 +351,11 @@ class _TopStatsCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Row(
-            children: const [
-              _Pill(text: 'UP 11%', bg: Color(0xFFD1FAE5), fg: Color(0xFF065F46)),
-              SizedBox(width: 8),
-              _Pill(text: 'CRITICAL 2', bg: Color(0xFFFFE4E6), fg: Color(0xFF9F1239)),
+            children: [
+              if (activeCenters > 0)
+                const _Pill(text: 'ACTIVE', bg: Color(0xFFD1FAE5), fg: Color(0xFF065F46))
+              else
+                const _Pill(text: 'NO STORES', bg: Color(0xFFFFE4E6), fg: Color(0xFF9F1239)),
             ],
           ),
           const SizedBox(height: 12),
@@ -299,7 +374,7 @@ class _TopStatsCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '1,402kg',
+                totalStock > 1000 ? '${stockKg}kg' : '$totalStock units',
                 style: GoogleFonts.manrope(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
@@ -312,7 +387,7 @@ class _TopStatsCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
-              value: 0.74,
+              value: totalStock > 0 ? (totalStock / 10000).clamp(0.1, 1.0) : 0,
               minHeight: 8,
               backgroundColor: _AdminStockTokens.blue,
               color: _AdminStockTokens.green,
@@ -383,9 +458,9 @@ class _HeroSkuCard extends StatelessWidget {
   }
 }
 
-class _VendorCard extends StatelessWidget {
-  const _VendorCard({required this.partner});
-  final Map<String, dynamic> partner;
+class _StoreCard extends StatelessWidget {
+  const _StoreCard({required this.store});
+  final Store store;
 
   @override
   Widget build(BuildContext context) {
@@ -395,120 +470,41 @@ class _VendorCard extends StatelessWidget {
         color: _AdminStockTokens.card,
         borderRadius: BorderRadius.circular(18),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              const CircleAvatar(
-                radius: 15,
-                backgroundColor: _AdminStockTokens.blue,
-                child: Icon(Icons.storefront_rounded, size: 16, color: _AdminStockTokens.green),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  partner['name'] as String? ?? 'Vendor',
+          const CircleAvatar(
+            radius: 20,
+            backgroundColor: _AdminStockTokens.blue,
+            child: Icon(Icons.storefront_rounded, size: 20, color: _AdminStockTokens.green),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  store.name,
                   style: GoogleFonts.manrope(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: _AdminStockTokens.ink,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'HIGH RISK',
-            style: GoogleFonts.inter(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-              color: const Color(0xFFBA1A1A),
-            ),
-          ),
-          const SizedBox(height: 6),
-          _metricRow('Shiitake', '420', 0.87),
-          const SizedBox(height: 4),
-          _metricRow('King Oyster', 'Low (120)', 0.32, danger: true),
-          const SizedBox(height: 4),
-          _metricRow('Lion\'s Mane', '410', 0.82),
-        ],
-      ),
-    );
-  }
-
-  Widget _metricRow(String label, String val, double progress, {bool danger = false}) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: _AdminStockTokens.body,
-                ),
-              ),
-            ),
-            Text(
-              val,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: danger ? const Color(0xFFBA1A1A) : _AdminStockTokens.ink,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 4,
-            backgroundColor: _AdminStockTokens.blue,
-            color: danger ? const Color(0xFFDC2626) : _AdminStockTokens.green,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _VendorMiniCard extends StatelessWidget {
-  const _VendorMiniCard({required this.partner});
-  final Map<String, dynamic> partner;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _AdminStockTokens.card,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444), size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              partner['name'] as String? ?? 'Partner',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: _AdminStockTokens.ink,
-              ),
+                if (store.city != null)
+                  Text(
+                    store.city!,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: _AdminStockTokens.body,
+                    ),
+                  ),
+              ],
             ),
           ),
           _Pill(
-            text: (partner['badge'] as String? ?? 'Status').toUpperCase(),
-            bg: const Color(0xFFFFE4E6),
-            fg: const Color(0xFF9F1239),
+            text: store.active ? 'ACTIVE' : 'INACTIVE',
+            bg: store.active ? const Color(0xFFD1FAE5) : const Color(0xFFFFE4E6),
+            fg: store.active ? const Color(0xFF065F46) : const Color(0xFF9F1239),
           ),
         ],
       ),

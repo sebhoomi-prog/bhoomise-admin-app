@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.bhoomise" "\0"
-            VALUE "FileDescription", "bhoomise" "\0"
+            VALUE "FileDescription", "bAdmin" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "bhoomise" "\0"
+            VALUE "InternalName", "bAdmin" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.bhoomise. All rights reserved." "\0"
-            VALUE "OriginalFilename", "bhoomise.exe" "\0"
-            VALUE "ProductName", "bhoomise" "\0"
+            VALUE "OriginalFilename", "bAdmin.exe" "\0"
+            VALUE "ProductName", "bAdmin" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

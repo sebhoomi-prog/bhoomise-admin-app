@@ -42,16 +42,6 @@ class AdminHubAppBar extends StatelessWidget implements PreferredSizeWidget {
       titleSpacing: 0,
       title: Row(
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: AdminSurface.darkCard.withValues(alpha: 0.15),
-            child: const Icon(
-              Icons.person_rounded,
-              size: 18,
-              color: AdminSurface.headline,
-            ),
-          ),
-          const SizedBox(width: 10),
           Flexible(
             child: Text(
               title,
