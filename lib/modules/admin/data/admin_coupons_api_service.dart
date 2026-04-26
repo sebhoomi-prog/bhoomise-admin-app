@@ -30,7 +30,7 @@ class AdminCouponsApiService {
       percentOff: percentOff,
       active: active,
       maxRedemptions: maxRedemptions,
-      eligiblePackGrams: eligiblePackGrams,
+      eligiblePackGrams: eligiblePackGrams!,
       minPackGramsAnyLine: minPackGramsAnyLine,
       expiresAt: expiresAt,
     );
