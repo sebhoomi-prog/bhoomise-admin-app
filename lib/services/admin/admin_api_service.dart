@@ -1,3 +1,7 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+
 import '../../models/api/admin_api_models.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoints.dart';
@@ -48,6 +52,32 @@ class AdminApiService {
     );
     final obj = _objectFromPayload(response.data, 'product');
     return Product.fromJson(obj);
+  }
+
+  /// Uploads a raster for master catalog; returns public HTTPS URL stored by the API.
+  Future<String> uploadCatalogProductImage({
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    final safeName = filename.trim().isEmpty
+        ? 'product_${DateTime.now().millisecondsSinceEpoch}.jpg'
+        : filename.trim();
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: safeName),
+    });
+    final response = await _api.postMultipart(
+      ApiEndpoints.catalogProductImages,
+      data: form,
+    );
+    final data = _payload(response.data);
+    if (data is Map) {
+      final m = _asStringKeyMap(data);
+      final url = m['url']?.toString();
+      if (url != null && url.isNotEmpty) {
+        return url;
+      }
+    }
+    throw StateError('Invalid catalog image upload response');
   }
 
   Future<void> deleteProduct(String productId) async {

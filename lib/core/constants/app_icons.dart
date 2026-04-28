@@ -2,5 +2,5 @@
 class AppIcons {
   AppIcons._();
 
-  static const logo = 'assets/images/bhoomise_logo.svg';
+  static const logo = 'assets/images/bhoomise_logo.png';
 }

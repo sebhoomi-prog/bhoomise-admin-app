@@ -1,11 +1,9 @@
-import 'dart:typed_data';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../config/backend_config.dart';
 import '../../../../models/api/admin_api_models.dart';
 import '../../../../services/admin/admin_api_service.dart';
 
@@ -289,10 +287,31 @@ class _AdminProductEditorBodyState extends State<_AdminProductEditorBody> {
   }
 
   Future<String?> _prepareImageUrl() async {
-    if (_selectedImageBytes == null) return _imageUrl.isNotEmpty ? _imageUrl : null;
-    
-    if (kDebugMode) debugPrint('Image upload not implemented - using placeholder');
-    return _imageUrl.isNotEmpty ? _imageUrl : null;
+    if (_selectedImageBytes == null) {
+      return _imageUrl.isNotEmpty ? _imageUrl : null;
+    }
+
+    if (!BackendConfig.hasRestApi) {
+      if (mounted) {
+        Get.snackbar(
+          'Image upload',
+          'Configure API_BASE_URL so photos can be stored on the server.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+      return _imageUrl.isNotEmpty ? _imageUrl : null;
+    }
+
+    setState(() => _uploadingImage = true);
+    try {
+      final url = await widget.api.uploadCatalogProductImage(
+        bytes: _selectedImageBytes!,
+        filename: _selectedImageName ?? 'product.jpg',
+      );
+      return url;
+    } finally {
+      if (mounted) setState(() => _uploadingImage = false);
+    }
   }
 
   void _addPack() => setState(() => _packs.add(_PackVariantDraft.empty()));

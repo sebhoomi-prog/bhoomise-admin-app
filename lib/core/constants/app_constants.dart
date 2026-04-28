@@ -13,6 +13,7 @@ class AppConstants {
   static const authVerifyOtp = '$apiPrefix/auth/verify-otp';
   static const me = '$apiPrefix/me';
   static const products = '$apiPrefix/products';
+  static const catalogProductImages = '$apiPrefix/catalog/product-images';
   static const coupons = '$apiPrefix/coupons';
   static const stores = '$apiPrefix/stores';
   static const orders = '$apiPrefix/orders';

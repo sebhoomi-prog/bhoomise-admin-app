@@ -8,6 +8,7 @@ class ApiEndpoints {
   static const verifyOtp = AppConstants.authVerifyOtp;
   static const me = AppConstants.me;
   static const products = AppConstants.products;
+  static const catalogProductImages = AppConstants.catalogProductImages;
   static const orders = AppConstants.orders;
   static const coupons = AppConstants.coupons;
   static const stores = AppConstants.stores;

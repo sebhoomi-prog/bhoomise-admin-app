@@ -1,4 +1,4 @@
-/// Admin API request/response models matching Postman collection.
+// Admin API request/response models matching Postman collection.
 
 int _readInt(dynamic v, [int defaultValue = 0]) {
   if (v == null) return defaultValue;
@@ -85,14 +85,23 @@ class Product {
   final bool published;
 
   factory Product.fromJson(Map<String, dynamic> json) {
+    var variants = _readMapList(json['variants'])
+        .map(ProductVariant.fromJson)
+        .toList();
+    if (variants.isEmpty) {
+      final synthesized = ProductVariant.fromJson(json);
+      if (synthesized.id.isNotEmpty) {
+        variants = [synthesized];
+      }
+    }
+
     return Product(
-      id: (json['id'] ?? '').toString(),
-      name: (json['name'] ?? '').toString(),
+      id: (json['id'] ?? json['product_id'] ?? '').toString(),
+      name: (json['name'] ?? json['product_name'] ?? json['display_name'] ?? '')
+          .toString(),
       description: json['description']?.toString(),
       imageUrl: json['image_url']?.toString(),
-      variants: _readMapList(json['variants'])
-          .map(ProductVariant.fromJson)
-          .toList(),
+      variants: variants,
       published: json['published'] == true,
     );
   }
@@ -124,12 +133,18 @@ class ProductVariant {
   final int lowStockThreshold;
 
   factory ProductVariant.fromJson(Map<String, dynamic> json) {
+    final priceMinorRaw = json['priceMinor'] ?? json['price_minor'];
+    final priceMinor = priceMinorRaw != null
+        ? _readInt(priceMinorRaw)
+        : (_readInt(json['price']) * 100);
+
     return ProductVariant(
-      id: (json['id'] ?? '').toString(),
-      label: (json['label'] ?? '').toString(),
+      id: (json['id'] ?? json['variant_id'] ?? json['product_id'] ?? '')
+          .toString(),
+      label: (json['label'] ?? json['unit'] ?? '').toString(),
       totalGrams: _readInt(json['totalGrams'] ?? json['total_grams']),
-      priceMinor: _readInt(json['priceMinor'] ?? json['price_minor']),
-      stock: _readInt(json['stock']),
+      priceMinor: priceMinor,
+      stock: _readInt(json['stock'] ?? json['inventory']),
       lowStockThreshold: _readInt(
         json['lowStockThreshold'] ?? json['low_stock_threshold'],
         5,

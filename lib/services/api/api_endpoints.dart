@@ -9,6 +9,7 @@ abstract final class ApiEndpoints {
 
   static const products = '/api/products';
   static String product(String productId) => '/api/products/$productId';
+  static const catalogProductImages = '/api/catalog/product-images';
 
   static const coupons = '/api/coupons';
   static String coupon(String couponCode) => '/api/coupons/$couponCode';

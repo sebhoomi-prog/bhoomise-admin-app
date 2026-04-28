@@ -54,6 +54,30 @@ class ApiClient {
     }
   }
 
+  /// Multipart upload (e.g. catalog images). [data] is typically [FormData].
+  Future<Response<dynamic>> postMultipart(
+    String path, {
+    required FormData data,
+    Map<String, dynamic>? query,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final qp = queryParameters ?? query;
+    try {
+      return await _dio.post<dynamic>(
+        path,
+        data: data,
+        queryParameters: qp,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+    } on DioException catch (e) {
+      if (e.error is NetworkException) rethrow;
+      throw NetworkException(
+        _messageFromDio(e),
+        code: e.type.name,
+      );
+    }
+  }
+
   Future<Response<dynamic>> put(
     String path, {
     Object? body,

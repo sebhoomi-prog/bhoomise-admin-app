@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -83,7 +82,7 @@ class _SplashPageState extends State<SplashPage> {
               Container(
                 padding: const EdgeInsets.all(DesignTokens.spaceXl),
                 decoration: DesignTokens.softCard(context),
-                child: SvgPicture.asset(
+                child: Image.asset(
                   AppIcons.logo,
                   height: 112,
                   fit: BoxFit.contain,
